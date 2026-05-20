@@ -1,0 +1,24 @@
+CRITICAL - 2026-05-05 14:36:46 --> ErrorException: Maximum execution time of 30 seconds exceeded
+[Method: POST, Route: admin/simcards/import]
+in SYSTEMPATH/Database/BaseConnection.php on line 1375.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()
+CRITICAL - 2026-05-05 14:49:47 --> ErrorException: Maximum execution time of 30 seconds exceeded
+[Method: POST, Route: admin/simcards/import]
+in SYSTEMPATH/Database/Query.php on line 332.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()
+CRITICAL - 2026-05-05 14:52:58 --> ErrorException: Maximum execution time of 30 seconds exceeded
+[Method: POST, Route: admin/simcards/import]
+in SYSTEMPATH/Database/MySQLi/Connection.php on line 370.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()
+CRITICAL - 2026-05-05 15:08:47 --> ErrorException: Maximum execution time of 30 seconds exceeded
+[Method: POST, Route: admin/simcards/import]
+in SYSTEMPATH/Database/MySQLi/Connection.php on line 370.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()
+CRITICAL - 2026-05-05 19:16:48 --> ErrorException: Maximum execution time of 30 seconds exceeded
+[Method: POST, Route: admin/simcards/import]
+in SYSTEMPATH/Database/BaseConnection.php on line 1396.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()
+CRITICAL - 2026-05-05 19:17:42 --> ErrorException: Maximum execution time of 30 seconds exceeded
+[Method: POST, Route: admin/simcards/import]
+in SYSTEMPATH/Database/MySQLi/Connection.php on line 370.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()

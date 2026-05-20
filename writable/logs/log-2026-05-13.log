@@ -1,0 +1,112 @@
+ERROR - 2026-05-13 09:50:35 --> mysqli_sql_exception: Duplicate entry '09001739758' for key 'number' in /home2/mysimir/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /home2/mysimir/system/Database/MySQLi/Connection.php(327): mysqli->query()
+#1 /home2/mysimir/system/Database/BaseConnection.php(729): CodeIgniter\Database\MySQLi\Connection->execute()
+#2 /home2/mysimir/system/Database/BaseConnection.php(646): CodeIgniter\Database\BaseConnection->simpleQuery()
+#3 /home2/mysimir/system/Database/BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query()
+#4 /home2/mysimir/system/Model.php(394): CodeIgniter\Database\BaseBuilder->insert()
+#5 /home2/mysimir/system/BaseModel.php(838): CodeIgniter\Model->doInsert()
+#6 /home2/mysimir/system/Model.php(797): CodeIgniter\BaseModel->insert()
+#7 /home2/mysimir/app/Controllers/Admin/SimcardsController.php(127): CodeIgniter\Model->insert()
+#8 /home2/mysimir/system/CodeIgniter.php(933): App\Controllers\Admin\SimcardsController->import()
+#9 /home2/mysimir/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController()
+#10 /home2/mysimir/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+#11 /home2/mysimir/system/Boot.php(363): CodeIgniter\CodeIgniter->run()
+#12 /home2/mysimir/system/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+#13 /home2/mysimir/public_html/index.php(59): CodeIgniter\Boot::bootWeb()
+#14 {main}
+ERROR - 2026-05-13 09:50:37 --> mysqli_sql_exception: Duplicate entry '09001740891' for key 'number' in /home2/mysimir/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /home2/mysimir/system/Database/MySQLi/Connection.php(327): mysqli->query()
+#1 /home2/mysimir/system/Database/BaseConnection.php(729): CodeIgniter\Database\MySQLi\Connection->execute()
+#2 /home2/mysimir/system/Database/BaseConnection.php(646): CodeIgniter\Database\BaseConnection->simpleQuery()
+#3 /home2/mysimir/system/Database/BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query()
+#4 /home2/mysimir/system/Model.php(394): CodeIgniter\Database\BaseBuilder->insert()
+#5 /home2/mysimir/system/BaseModel.php(838): CodeIgniter\Model->doInsert()
+#6 /home2/mysimir/system/Model.php(797): CodeIgniter\BaseModel->insert()
+#7 /home2/mysimir/app/Controllers/Admin/SimcardsController.php(127): CodeIgniter\Model->insert()
+#8 /home2/mysimir/system/CodeIgniter.php(933): App\Controllers\Admin\SimcardsController->import()
+#9 /home2/mysimir/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController()
+#10 /home2/mysimir/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+#11 /home2/mysimir/system/Boot.php(363): CodeIgniter\CodeIgniter->run()
+#12 /home2/mysimir/system/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+#13 /home2/mysimir/public_html/index.php(59): CodeIgniter\Boot::bootWeb()
+#14 {main}
+ERROR - 2026-05-13 09:50:37 --> mysqli_sql_exception: Duplicate entry '09001741602' for key 'number' in /home2/mysimir/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /home2/mysimir/system/Database/MySQLi/Connection.php(327): mysqli->query()
+#1 /home2/mysimir/system/Database/BaseConnection.php(729): CodeIgniter\Database\MySQLi\Connection->execute()
+#2 /home2/mysimir/system/Database/BaseConnection.php(646): CodeIgniter\Database\BaseConnection->simpleQuery()
+#3 /home2/mysimir/system/Database/BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query()
+#4 /home2/mysimir/system/Model.php(394): CodeIgniter\Database\BaseBuilder->insert()
+#5 /home2/mysimir/system/BaseModel.php(838): CodeIgniter\Model->doInsert()
+#6 /home2/mysimir/system/Model.php(797): CodeIgniter\BaseModel->insert()
+#7 /home2/mysimir/app/Controllers/Admin/SimcardsController.php(127): CodeIgniter\Model->insert()
+#8 /home2/mysimir/system/CodeIgniter.php(933): App\Controllers\Admin\SimcardsController->import()
+#9 /home2/mysimir/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController()
+#10 /home2/mysimir/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+#11 /home2/mysimir/system/Boot.php(363): CodeIgniter\CodeIgniter->run()
+#12 /home2/mysimir/system/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+#13 /home2/mysimir/public_html/index.php(59): CodeIgniter\Boot::bootWeb()
+#14 {main}
+ERROR - 2026-05-13 09:50:39 --> mysqli_sql_exception: Duplicate entry '09001741862' for key 'number' in /home2/mysimir/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /home2/mysimir/system/Database/MySQLi/Connection.php(327): mysqli->query()
+#1 /home2/mysimir/system/Database/BaseConnection.php(729): CodeIgniter\Database\MySQLi\Connection->execute()
+#2 /home2/mysimir/system/Database/BaseConnection.php(646): CodeIgniter\Database\BaseConnection->simpleQuery()
+#3 /home2/mysimir/system/Database/BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query()
+#4 /home2/mysimir/system/Model.php(394): CodeIgniter\Database\BaseBuilder->insert()
+#5 /home2/mysimir/system/BaseModel.php(838): CodeIgniter\Model->doInsert()
+#6 /home2/mysimir/system/Model.php(797): CodeIgniter\BaseModel->insert()
+#7 /home2/mysimir/app/Controllers/Admin/SimcardsController.php(127): CodeIgniter\Model->insert()
+#8 /home2/mysimir/system/CodeIgniter.php(933): App\Controllers\Admin\SimcardsController->import()
+#9 /home2/mysimir/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController()
+#10 /home2/mysimir/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+#11 /home2/mysimir/system/Boot.php(363): CodeIgniter\CodeIgniter->run()
+#12 /home2/mysimir/system/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+#13 /home2/mysimir/public_html/index.php(59): CodeIgniter\Boot::bootWeb()
+#14 {main}
+ERROR - 2026-05-13 09:50:40 --> mysqli_sql_exception: Duplicate entry '09001744301' for key 'number' in /home2/mysimir/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /home2/mysimir/system/Database/MySQLi/Connection.php(327): mysqli->query()
+#1 /home2/mysimir/system/Database/BaseConnection.php(729): CodeIgniter\Database\MySQLi\Connection->execute()
+#2 /home2/mysimir/system/Database/BaseConnection.php(646): CodeIgniter\Database\BaseConnection->simpleQuery()
+#3 /home2/mysimir/system/Database/BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query()
+#4 /home2/mysimir/system/Model.php(394): CodeIgniter\Database\BaseBuilder->insert()
+#5 /home2/mysimir/system/BaseModel.php(838): CodeIgniter\Model->doInsert()
+#6 /home2/mysimir/system/Model.php(797): CodeIgniter\BaseModel->insert()
+#7 /home2/mysimir/app/Controllers/Admin/SimcardsController.php(127): CodeIgniter\Model->insert()
+#8 /home2/mysimir/system/CodeIgniter.php(933): App\Controllers\Admin\SimcardsController->import()
+#9 /home2/mysimir/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController()
+#10 /home2/mysimir/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+#11 /home2/mysimir/system/Boot.php(363): CodeIgniter\CodeIgniter->run()
+#12 /home2/mysimir/system/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+#13 /home2/mysimir/public_html/index.php(59): CodeIgniter\Boot::bootWeb()
+#14 {main}
+ERROR - 2026-05-13 09:50:40 --> mysqli_sql_exception: Duplicate entry '09001744501' for key 'number' in /home2/mysimir/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /home2/mysimir/system/Database/MySQLi/Connection.php(327): mysqli->query()
+#1 /home2/mysimir/system/Database/BaseConnection.php(729): CodeIgniter\Database\MySQLi\Connection->execute()
+#2 /home2/mysimir/system/Database/BaseConnection.php(646): CodeIgniter\Database\BaseConnection->simpleQuery()
+#3 /home2/mysimir/system/Database/BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query()
+#4 /home2/mysimir/system/Model.php(394): CodeIgniter\Database\BaseBuilder->insert()
+#5 /home2/mysimir/system/BaseModel.php(838): CodeIgniter\Model->doInsert()
+#6 /home2/mysimir/system/Model.php(797): CodeIgniter\BaseModel->insert()
+#7 /home2/mysimir/app/Controllers/Admin/SimcardsController.php(127): CodeIgniter\Model->insert()
+#8 /home2/mysimir/system/CodeIgniter.php(933): App\Controllers\Admin\SimcardsController->import()
+#9 /home2/mysimir/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController()
+#10 /home2/mysimir/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+#11 /home2/mysimir/system/Boot.php(363): CodeIgniter\CodeIgniter->run()
+#12 /home2/mysimir/system/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+#13 /home2/mysimir/public_html/index.php(59): CodeIgniter\Boot::bootWeb()
+#14 {main}
+CRITICAL - 2026-05-13 17:11:41 --> CodeIgniter\HTTP\Exceptions\BadRequestException: The URI you submitted has disallowed characters: "ه"
+[Method: GET, Route: %D9%87]
+in SYSTEMPATH/Router/Router.php on line 741.
+ 1 SYSTEMPATH/Router/Router.php(207): CodeIgniter\Router\Router->checkDisallowedChars()
+ 2 SYSTEMPATH/CodeIgniter.php(832): CodeIgniter\Router\Router->handle()
+ 3 SYSTEMPATH/CodeIgniter.php(455): CodeIgniter\CodeIgniter->tryToRouteIt()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(363): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(68): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(59): CodeIgniter\Boot::bootWeb()
