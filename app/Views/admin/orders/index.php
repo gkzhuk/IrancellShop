@@ -1,7 +1,7 @@
 <?= $this->extend('admin/layout') ?>
 
 <?= $this->section('content') ?>
-<h2 class="mb-4">مدیریت سفارشات</h2>
+<h2 class="mb-4">مدیریت پرداخت</h2>
 
 <div class="card mb-4">
     <div class="card-body">

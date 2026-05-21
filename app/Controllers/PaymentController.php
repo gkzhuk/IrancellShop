@@ -51,6 +51,8 @@ class PaymentController extends BaseController
             'amount'              => $amountRial,
             'payment_status'      => OrderModel::STATUS_PENDING,
             'payment_message'     => 'Order created. Waiting for gateway request.',
+            'secure_token'         => bin2hex(random_bytes(32)),
+            'admin_status'         => OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING,
         ], true);
 
         $zarinpal = new ZarinpalGateway();
@@ -133,6 +135,7 @@ class PaymentController extends BaseController
                     'ref_id'              => $verification['ref_id'],
                     'payment_message'     => 'Payment verified successfully. Verify type: ' . ($verification['type'] ?? 'verified'),
                     'payment_verified_at' => date('Y-m-d H:i:s'),
+                    'admin_status'         => OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING,
                 ]);
 
                 $simcardModel = new SimcardModel();

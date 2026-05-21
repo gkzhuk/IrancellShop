@@ -44,7 +44,8 @@
                     <a href="<?= base_url('admin/dashboard') ?>" class="<?= uri_string() == 'admin/dashboard' ? 'active' : '' ?>"><i class="bi bi-speedometer2"></i> داشبورد</a>
                     <a href="<?= base_url('admin/admins') ?>" class="<?= strpos(uri_string(), 'admin/admins') !== false ? 'active' : '' ?>"><i class="bi bi-people"></i> مدیران</a>
                     <a href="<?= base_url('admin/simcards') ?>" class="<?= strpos(uri_string(), 'admin/simcards') !== false ? 'active' : '' ?>"><i class="bi bi-sim"></i> سیم‌کارت‌ها</a>
-                    <a href="<?= base_url('admin/orders') ?>" class="<?= strpos(uri_string(), 'admin/orders') !== false ? 'active' : '' ?>"><i class="bi bi-cart"></i> سفارشات</a>
+                    <a href="<?= base_url('admin/orders') ?>" class="<?= strpos(uri_string(), 'admin/orders') !== false ? 'active' : '' ?>"><i class="bi bi-cart"></i> مدیریت پرداخت</a>
+                    <a href="<?= base_url('admin/successful-orders') ?>" class="<?= strpos(uri_string(), 'admin/successful-orders') !== false ? 'active' : '' ?>"><i class="bi bi-card-checklist"></i> سفارشات موفق</a>
                     <a href="<?= base_url('admin/ip-whitelist') ?>" 
                        class="<?= strpos(uri_string(), 'admin/ip-whitelist') !== false ? 'active' : '' ?>">
                        <i class="bi bi-shield-lock"></i> IP مجاز
