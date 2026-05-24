@@ -105,6 +105,12 @@ class PaymentController extends BaseController
 
         // Idempotency guard: never downgrade a successful payment.
         if ($order['payment_status'] === OrderModel::STATUS_SUCCESS) {
+            if ($this->ordersColumnExists('secure_token') && empty($order['secure_token'])) {
+                $newToken = bin2hex(random_bytes(32));
+                $orderModel->update($order['id'], ['secure_token' => $newToken]);
+                $order['secure_token'] = $newToken;
+            }
+
             return view('front/success', [
                 'order'  => $order,
                 'ref_id' => $order['ref_id'],
@@ -153,6 +159,12 @@ class PaymentController extends BaseController
                 }
 
                 $orderModel->update($order['id'], $successUpdate);
+
+                if (isset($successUpdate['secure_token'])) {
+                    $order['secure_token'] = $successUpdate['secure_token'];
+                } elseif (!empty($freshOrder['secure_token'])) {
+                    $order['secure_token'] = $freshOrder['secure_token'];
+                }
 
                 $simcardModel = new SimcardModel();
                 $simcardModel->update($order['simcard_id'], ['status' => 'sold']);
