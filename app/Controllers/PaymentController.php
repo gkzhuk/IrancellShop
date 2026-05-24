@@ -8,6 +8,8 @@ use App\Models\SimcardModel;
 
 class PaymentController extends BaseController
 {
+    private ?array $ordersTableColumns = null;
+
     public function start()
     {
         $simcardId = $this->request->getPost('simcard_id');
@@ -40,7 +42,7 @@ class PaymentController extends BaseController
 
         $orderModel = new OrderModel();
 
-        $orderId = $orderModel->insert([
+        $insertData = [
             'tracking_code'       => $trackingCode,
             'simcard_id'          => $simcardId,
             'buyer_name'          => $this->request->getPost('buyer_name'),
@@ -51,9 +53,16 @@ class PaymentController extends BaseController
             'amount'              => $amountRial,
             'payment_status'      => OrderModel::STATUS_PENDING,
             'payment_message'     => 'Order created. Waiting for gateway request.',
-            'secure_token'         => bin2hex(random_bytes(32)),
-            'admin_status'         => OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING,
-        ], true);
+        ];
+
+        if ($this->ordersColumnExists('secure_token')) {
+            $insertData['secure_token'] = bin2hex(random_bytes(32));
+        }
+        if ($this->ordersColumnExists('admin_status')) {
+            $insertData['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+        }
+
+        $orderId = $orderModel->insert($insertData, true);
 
         $zarinpal = new ZarinpalGateway();
         $description = 'خرید سیم‌کارت ' . $simcard['number'];
@@ -130,13 +139,20 @@ class PaymentController extends BaseController
             $freshOrder = $orderModel->where('id', $order['id'])->first();
 
             if ($freshOrder && $freshOrder['payment_status'] !== OrderModel::STATUS_SUCCESS) {
-                $orderModel->update($order['id'], [
+                $successUpdate = [
                     'payment_status'      => OrderModel::STATUS_SUCCESS,
                     'ref_id'              => $verification['ref_id'],
                     'payment_message'     => 'Payment verified successfully. Verify type: ' . ($verification['type'] ?? 'verified'),
                     'payment_verified_at' => date('Y-m-d H:i:s'),
-                    'admin_status'         => OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING,
-                ]);
+                ];
+                if ($this->ordersColumnExists('admin_status')) {
+                    $successUpdate['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+                }
+                if ($this->ordersColumnExists('secure_token') && empty($freshOrder['secure_token'])) {
+                    $successUpdate['secure_token'] = bin2hex(random_bytes(32));
+                }
+
+                $orderModel->update($order['id'], $successUpdate);
 
                 $simcardModel = new SimcardModel();
                 $simcardModel->update($order['simcard_id'], ['status' => 'sold']);
@@ -190,5 +206,14 @@ class PaymentController extends BaseController
         } while ($exists > 0);
 
         return $code;
+    }
+
+    private function ordersColumnExists(string $column): bool
+    {
+        if ($this->ordersTableColumns === null) {
+            $this->ordersTableColumns = \Config\Database::connect()->getFieldNames('orders');
+        }
+
+        return in_array($column, $this->ordersTableColumns, true);
     }
 }

@@ -7,13 +7,20 @@ use App\Models\OrderModel;
 
 class SuccessfulOrdersController extends BaseController
 {
+    private ?array $ordersTableColumns = null;
+
     public function index()
     {
         $model = new OrderModel();
         $search = $this->request->getGet('search');
 
+        $select = 'orders.*, simcards.number as simcard_number';
+        if (!$this->ordersColumnExists('admin_status')) {
+            $select .= ", 'documents_pending' as admin_status";
+        }
+
         $model->where('orders.payment_status', OrderModel::STATUS_SUCCESS)
-            ->select('orders.*, simcards.number as simcard_number')
+            ->select($select)
             ->join('simcards', 'simcards.id = orders.simcard_id', 'left');
 
         if ($search) {
@@ -33,7 +40,7 @@ class SuccessfulOrdersController extends BaseController
         $order = (new OrderModel())
             ->where('orders.id', $id)
             ->where('orders.payment_status', OrderModel::STATUS_SUCCESS)
-            ->select('orders.*, simcards.number as simcard_number')
+            ->select($this->ordersColumnExists('admin_status') ? 'orders.*, simcards.number as simcard_number' : "orders.*, simcards.number as simcard_number, 'documents_pending' as admin_status")
             ->join('simcards', 'simcards.id = orders.simcard_id', 'left')
             ->first();
 
@@ -47,10 +54,22 @@ class SuccessfulOrdersController extends BaseController
     public function updateStatus(int $id)
     {
         $status = (string) $this->request->getPost('admin_status');
+        if (!$this->ordersColumnExists('admin_status')) {
+            return redirect()->back()->with('error', 'ستون وضعیت داخلی هنوز ایجاد نشده است.');
+        }
         if (!array_key_exists($status, OrderModel::adminStatuses())) {
             return redirect()->back()->with('error', 'وضعیت نامعتبر است.');
         }
         (new OrderModel())->update($id, ['admin_status' => $status]);
         return redirect()->back()->with('success', 'وضعیت سفارش به‌روزرسانی شد.');
+    }
+
+    private function ordersColumnExists(string $column): bool
+    {
+        if ($this->ordersTableColumns === null) {
+            $this->ordersTableColumns = \Config\Database::connect()->getFieldNames('orders');
+        }
+
+        return in_array($column, $this->ordersTableColumns, true);
     }
 }

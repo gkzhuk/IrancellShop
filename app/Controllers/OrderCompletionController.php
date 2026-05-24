@@ -6,8 +6,14 @@ use App\Models\OrderModel;
 
 class OrderCompletionController extends BaseController
 {
+    private ?array $ordersTableColumns = null;
+
     public function show(string $token)
     {
+        if (!$this->ordersColumnExists('secure_token')) {
+            return view('front/failed', ['message' => 'این سرویس هنوز فعال نشده است.']);
+        }
+
         $order = (new OrderModel())->where('secure_token', $token)->where('payment_status', OrderModel::STATUS_SUCCESS)->first();
         if (!$order) return view('front/failed', ['message' => 'لینک نامعتبر است.']);
         if (($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_CANCELLED) return view('front/failed', ['message' => 'این سفارش لغو شده است.']);
@@ -16,6 +22,10 @@ class OrderCompletionController extends BaseController
 
     public function submit(string $token)
     {
+        if (!$this->ordersColumnExists('secure_token')) {
+            return redirect()->back()->with('error', 'این سرویس هنوز فعال نشده است.');
+        }
+
         $model = new OrderModel();
         $order = $model->where('secure_token', $token)->where('payment_status', OrderModel::STATUS_SUCCESS)->first();
         if (!$order) return redirect()->back()->with('error', 'لینک نامعتبر است.');
@@ -35,15 +45,30 @@ class OrderCompletionController extends BaseController
         $nidName = $nid->getRandomName(); $sfName = $sf->getRandomName();
         $nid->move($dir, $nidName); $sf->move($dir, $sfName);
 
-        $model->update($order['id'], [
+        $updateData = [
             'address' => $this->request->getPost('address'),
             'postal_code' => $this->request->getPost('postal_code'),
             'national_id_document_path' => 'orders/' . $order['id'] . '/' . $nidName,
             'selfie_document_path' => 'orders/' . $order['id'] . '/' . $sfName,
-            'documents_uploaded_at' => date('Y-m-d H:i:s'),
-            'admin_status' => OrderModel::ADMIN_STATUS_DOCUMENTS_UPLOADED,
-        ]);
+        ];
+        if ($this->ordersColumnExists('documents_uploaded_at')) {
+            $updateData['documents_uploaded_at'] = date('Y-m-d H:i:s');
+        }
+        if ($this->ordersColumnExists('admin_status')) {
+            $updateData['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_UPLOADED;
+        }
+
+        $model->update($order['id'], $updateData);
 
         return redirect()->back()->with('success', 'اطلاعات با موفقیت ثبت شد.');
+    }
+
+    private function ordersColumnExists(string $column): bool
+    {
+        if ($this->ordersTableColumns === null) {
+            $this->ordersTableColumns = \Config\Database::connect()->getFieldNames('orders');
+        }
+
+        return in_array($column, $this->ordersTableColumns, true);
     }
 }
