@@ -105,7 +105,7 @@ class PaymentController extends BaseController
 
         // Idempotency guard: never downgrade a successful payment.
         if ($order['payment_status'] === OrderModel::STATUS_SUCCESS) {
-            $order = $this->attachSecureTokenForSuccessView($orderModel, $order);
+            $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
             return view('front/success', [
                 'order'  => $order,
@@ -170,7 +170,7 @@ class PaymentController extends BaseController
 
             $order['payment_status'] = OrderModel::STATUS_SUCCESS;
             $order['ref_id'] = $verification['ref_id'];
-            $order = $this->attachSecureTokenForSuccessView($orderModel, $order);
+            $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
             return view('front/success', [
                 'order'  => $order,
@@ -226,24 +226,32 @@ class PaymentController extends BaseController
         return in_array($column, $this->ordersTableColumns, true);
     }
 
-    private function attachSecureTokenForSuccessView(OrderModel $orderModel, array $order): array
+    private function ensureOrderHasSecureToken(OrderModel $orderModel, int $orderId): ?array
     {
         if (!$this->ordersColumnExists('secure_token')) {
-            return $order;
+            log_message('warning', 'secure_token column does not exist for order id {id}', ['id' => $orderId]);
+            return $orderModel->find($orderId);
         }
 
-        if (!empty($order['secure_token'])) {
-            return $order;
+        $latest = $orderModel->find($orderId);
+        if (!$latest) {
+            return null;
+        }
+
+        if (!empty($latest['secure_token'])) {
+            return $latest;
         }
 
         $newToken = bin2hex(random_bytes(32));
-        $orderModel->update($order['id'], ['secure_token' => $newToken]);
-        $latest = $orderModel->find($order['id']);
+        $orderModel->update($orderId, ['secure_token' => $newToken]);
+        $latest = $orderModel->find($orderId);
 
-        if (is_array($latest) && !empty($latest['secure_token'])) {
-            $order['secure_token'] = $latest['secure_token'];
+        if (!empty($latest['secure_token'])) {
+            return $latest;
         }
 
-        return $order;
+        log_message('error', 'Failed to persist secure_token for successful order id {id}', ['id' => $orderId]);
+
+        return $latest;
     }
 }

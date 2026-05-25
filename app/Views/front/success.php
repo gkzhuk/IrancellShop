@@ -16,12 +16,7 @@
             <p class="text-muted mt-3">برای تکمیل سفارش، لطفاً مدارک خود را تکمیل کنید.</p>
             <p class="small text-muted">شماره تراکنش: <?= $ref_id ?></p>
             
-            <?php $secureToken = $order['secure_token'] ?? null; ?>
-            <?php if ($secureToken): ?>
-                <a href="<?= base_url('order/complete/' . $secureToken) ?>" class="btn btn-primary mt-4">تکمیل اطلاعات و بارگذاری مدارک</a>
-            <?php else: ?>
-                <div class="alert alert-warning mt-4">لینک تکمیل مدارک هنوز آماده نیست. لطفاً چند دقیقه دیگر مجدداً تلاش کنید.</div>
-            <?php endif; ?>
+            <a href="<?= base_url('order/complete/' . $order['secure_token']) ?>" class="btn btn-primary mt-4">تکمیل اطلاعات و بارگذاری مدارک</a>
         </div>
     </div>
 </div>
