@@ -10,6 +10,7 @@ class OrderCompletionController extends BaseController
 
     public function show(string $token)
     {
+        $this->ensureSecureTokenSchema();
         if (!$this->ordersColumnExists('secure_token')) {
             return $this->invalidLink('این سرویس هنوز فعال نشده است.');
         }
@@ -23,6 +24,7 @@ class OrderCompletionController extends BaseController
 
     public function submit(string $token)
     {
+        $this->ensureSecureTokenSchema();
         if (!$this->ordersColumnExists('secure_token')) {
             return redirect()->back()->with('error', 'این سرویس هنوز فعال نشده است.');
         }
@@ -74,6 +76,46 @@ class OrderCompletionController extends BaseController
         return redirect()->back()->with('success', 'اطلاعات با موفقیت ثبت شد.');
     }
 
+
+
+    private function ensureSecureTokenSchema(): void
+    {
+        if ($this->ordersColumnExists('secure_token')) {
+            return;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $forge = \Config\Database::forge();
+
+            if (!$db->tableExists('orders')) {
+                return;
+            }
+
+            if (!$db->fieldExists('secure_token', 'orders')) {
+                $forge->addColumn('orders', [
+                    'secure_token' => [
+                        'type'       => 'VARCHAR',
+                        'constraint' => 128,
+                        'null'       => true,
+                    ],
+                ]);
+            }
+
+            $this->ordersTableColumns = null;
+
+            try {
+                $forge->addKey('secure_token', false, true);
+                $forge->processIndexes('orders');
+            } catch (\Throwable $e) {
+                // index may already exist
+            }
+
+            log_message('notice', 'Auto-repaired missing secure_token column on orders table');
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed auto-repair for secure_token schema: {message}', ['message' => $e->getMessage()]);
+        }
+    }
 
     private function isSuccessfulPaymentOrder(array $order): bool
     {

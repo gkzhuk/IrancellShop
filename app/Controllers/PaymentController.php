@@ -196,6 +196,7 @@ class PaymentController extends BaseController
     private function buildSuccessViewData(OrderModel $orderModel, array $order, string $refId): array
     {
         $orderId = (int) ($order['id'] ?? 0);
+        $this->ensureSecureTokenSchema();
         $resolvedOrder = $this->ensureOrderHasSecureToken($orderModel, $orderId) ?? $order;
         $secureToken = (string) ($resolvedOrder['secure_token'] ?? '');
 
@@ -255,6 +256,46 @@ class PaymentController extends BaseController
         } while ($exists > 0);
 
         return $code;
+    }
+
+
+    private function ensureSecureTokenSchema(): void
+    {
+        if ($this->ordersColumnExists('secure_token')) {
+            return;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $forge = \Config\Database::forge();
+
+            if (!$db->tableExists('orders')) {
+                return;
+            }
+
+            if (!$db->fieldExists('secure_token', 'orders')) {
+                $forge->addColumn('orders', [
+                    'secure_token' => [
+                        'type'       => 'VARCHAR',
+                        'constraint' => 128,
+                        'null'       => true,
+                    ],
+                ]);
+            }
+
+            $this->ordersTableColumns = null;
+
+            try {
+                $forge->addKey('secure_token', false, true);
+                $forge->processIndexes('orders');
+            } catch (\Throwable $e) {
+                // index may already exist
+            }
+
+            log_message('notice', 'Auto-repaired missing secure_token column on orders table from callback flow');
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed auto-repair for secure_token schema in callback: {message}', ['message' => $e->getMessage()]);
+        }
     }
 
     private function ordersColumnExists(string $column): bool
