@@ -21,7 +21,8 @@ class PaymentController extends BaseController
         }
 
         if (!$this->validate([
-            'buyer_name'          => 'required',
+            'buyer_first_name'    => 'required',
+            'buyer_last_name'     => 'required',
             'buyer_national_code' => 'required|exact_length[10]',
             'buyer_phone'         => 'required|exact_length[11]',
             'father_name'         => 'required',
@@ -45,7 +46,9 @@ class PaymentController extends BaseController
         $insertData = [
             'tracking_code'       => $trackingCode,
             'simcard_id'          => $simcardId,
-            'buyer_name'          => $this->request->getPost('buyer_name'),
+            'buyer_first_name'    => $this->request->getPost('buyer_first_name'),
+            'buyer_last_name'     => $this->request->getPost('buyer_last_name'),
+            'buyer_name'          => trim($this->request->getPost('buyer_first_name') . ' ' . $this->request->getPost('buyer_last_name')), 
             'buyer_national_code' => $this->request->getPost('buyer_national_code'),
             'buyer_phone'         => $this->request->getPost('buyer_phone'),
             'buyer_father_name'   => $this->request->getPost('father_name'),
@@ -57,6 +60,9 @@ class PaymentController extends BaseController
 
         if ($this->ordersColumnExists('secure_token')) {
             $insertData['secure_token'] = bin2hex(random_bytes(32));
+        }
+        if ($this->ordersColumnExists('order_status')) {
+            $insertData['order_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
         }
         if ($this->ordersColumnExists('admin_status')) {
             $insertData['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
@@ -144,6 +150,9 @@ class PaymentController extends BaseController
                     'payment_message'     => 'Payment verified successfully. Verify type: ' . ($verification['type'] ?? 'verified'),
                     'payment_verified_at' => date('Y-m-d H:i:s'),
                 ];
+                if ($this->ordersColumnExists('order_status')) {
+                    $successUpdate['order_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+                }
                 if ($this->ordersColumnExists('admin_status')) {
                     $successUpdate['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
                 }

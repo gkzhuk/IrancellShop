@@ -15,8 +15,8 @@ class SuccessfulOrdersController extends BaseController
         $search = $this->request->getGet('search');
 
         $select = 'orders.*, simcards.number as simcard_number';
-        if (!$this->ordersColumnExists('admin_status')) {
-            $select .= ", 'documents_pending' as admin_status";
+        if (!$this->ordersColumnExists('order_status')) {
+            $select .= ", 'documents_pending' as order_status";
         }
 
         $model->where('orders.payment_status', OrderModel::STATUS_SUCCESS)
@@ -31,7 +31,7 @@ class SuccessfulOrdersController extends BaseController
             'orders' => $model->orderBy('orders.created_at', 'DESC')->paginate(20),
             'pager' => $model->pager,
             'search' => $search,
-            'adminStatuses' => OrderModel::adminStatuses(),
+            'orderStatuses' => OrderModel::adminStatuses(),
         ]);
     }
 
@@ -40,7 +40,7 @@ class SuccessfulOrdersController extends BaseController
         $order = (new OrderModel())
             ->where('orders.id', $id)
             ->where('orders.payment_status', OrderModel::STATUS_SUCCESS)
-            ->select($this->ordersColumnExists('admin_status') ? 'orders.*, simcards.number as simcard_number' : "orders.*, simcards.number as simcard_number, 'documents_pending' as admin_status")
+            ->select($this->ordersColumnExists('order_status') ? 'orders.*, simcards.number as simcard_number' : "orders.*, simcards.number as simcard_number, 'documents_pending' as order_status")
             ->join('simcards', 'simcards.id = orders.simcard_id', 'left')
             ->first();
 
@@ -48,7 +48,7 @@ class SuccessfulOrdersController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        return view('admin/successful_orders/show', ['order' => $order, 'adminStatuses' => OrderModel::adminStatuses()]);
+        return view('admin/successful_orders/show', ['order' => $order, 'orderStatuses' => OrderModel::adminStatuses()]);
     }
 
 
@@ -90,14 +90,14 @@ class SuccessfulOrdersController extends BaseController
 
     public function updateStatus(int $id)
     {
-        $status = (string) $this->request->getPost('admin_status');
-        if (!$this->ordersColumnExists('admin_status')) {
-            return redirect()->back()->with('error', 'ستون وضعیت داخلی هنوز ایجاد نشده است.');
+        $status = (string) $this->request->getPost('order_status');
+        if (!$this->ordersColumnExists('order_status')) {
+            return redirect()->back()->with('error', 'ستون وضعیت سفارش ایجاد نشده است.');
         }
         if (!array_key_exists($status, OrderModel::adminStatuses())) {
             return redirect()->back()->with('error', 'وضعیت نامعتبر است.');
         }
-        (new OrderModel())->update($id, ['admin_status' => $status]);
+        (new OrderModel())->update($id, ['order_status' => $status]);
         return redirect()->back()->with('success', 'وضعیت سفارش به‌روزرسانی شد.');
     }
 

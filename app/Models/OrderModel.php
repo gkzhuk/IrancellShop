@@ -16,6 +16,8 @@ class OrderModel extends Model
         'tracking_code',
         'simcard_id',
         'buyer_name',
+        'buyer_last_name',
+        'buyer_first_name',
         'buyer_national_code',
         'buyer_phone',
         'buyer_father_name',

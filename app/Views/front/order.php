@@ -135,8 +135,12 @@
                     
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">نام و نام خانوادگی</label>
-                            <input type="text" class="form-control" name="buyer_name" value="<?= old('buyer_name') ?>" required>
+                            <label class="form-label">نام</label>
+                            <input type="text" class="form-control" name="buyer_first_name" value="<?= old('buyer_first_name') ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">نام خانوادگی</label>
+                            <input type="text" class="form-control" name="buyer_last_name" value="<?= old('buyer_last_name') ?>" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">کد ملی</label>
