@@ -2,7 +2,7 @@
 <?= $this->section('content') ?>
 <h2>جزئیات سفارش <?= esc($order['tracking_code']) ?></h2>
 <ul>
-<li>نام: <?= esc(trim((($order['buyer_first_name'] ?? '') . ' ' . ($order['buyer_last_name'] ?? '')) ?: $order['buyer_name'])) ?></li>
+<li>نام: <?= esc(((trim((string) ($order['buyer_first_name'] ?? '')) !== '' || trim((string) ($order['buyer_last_name'] ?? '')) !== '') ? trim(((string) ($order['buyer_first_name'] ?? '')) . ' ' . ((string) ($order['buyer_last_name'] ?? ''))) : ((string) ($order['buyer_name'] ?? '')))) ?></li>
 <li>کد ملی: <?= esc($order['buyer_national_code']) ?></li>
 <li>تاریخ تولد: <?= esc($order['buyer_birthdate']) ?></li>
 <li>نام پدر: <?= esc($order['buyer_father_name']) ?></li>

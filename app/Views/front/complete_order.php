@@ -9,7 +9,7 @@
         <?= csrf_field() ?>
 
         <label class="form-label">نام و نام خانوادگی</label>
-        <input class="form-control mb-2" value="<?= esc(trim((($order['buyer_first_name'] ?? '') . ' ' . ($order['buyer_last_name'] ?? '')) ?: ($order['buyer_name'] ?? ''))) ?>" readonly>
+        <input class="form-control mb-2" value="<?= esc(((trim((string) ($order['buyer_first_name'] ?? '')) !== '' || trim((string) ($order['buyer_last_name'] ?? '')) !== '') ? trim(((string) ($order['buyer_first_name'] ?? '')) . ' ' . ((string) ($order['buyer_last_name'] ?? ''))) : ((string) ($order['buyer_name'] ?? '')))) ?>" readonly>
 
         <label class="form-label">کد ملی</label>
         <input class="form-control mb-2" value="<?= esc($order['buyer_national_code']) ?>" readonly>
