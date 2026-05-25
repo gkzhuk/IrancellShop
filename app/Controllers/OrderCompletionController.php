@@ -59,6 +59,15 @@ class OrderCompletionController extends BaseController
         if ($this->ordersColumnExists('admin_status')) {
             $updateData['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_UPLOADED;
         }
+        if ($this->ordersColumnExists('order_status')) {
+            $updateData['order_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_UPLOADED;
+        }
+        if ($this->ordersColumnExists('national_card_image')) {
+            $updateData['national_card_image'] = 'orders/' . $order['id'] . '/' . $nidName;
+        }
+        if ($this->ordersColumnExists('selfie_image')) {
+            $updateData['selfie_image'] = 'orders/' . $order['id'] . '/' . $sfName;
+        }
 
         $model->update($order['id'], $updateData);
 

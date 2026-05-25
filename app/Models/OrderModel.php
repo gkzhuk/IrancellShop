@@ -28,10 +28,13 @@ class OrderModel extends Model
         'payment_verified_at',
         'secure_token',
         'admin_status',
+        'order_status',
         'address',
         'postal_code',
         'national_id_document_path',
+        'national_card_image',
         'selfie_document_path',
+        'selfie_image',
         'documents_uploaded_at',
     ];
 
