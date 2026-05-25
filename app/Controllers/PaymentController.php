@@ -200,10 +200,9 @@ class PaymentController extends BaseController
         $secureToken = (string) ($resolvedOrder['secure_token'] ?? '');
 
         if ($secureToken === '' && $orderId > 0) {
-            $secureToken = bin2hex(random_bytes(32));
-            log_message('warning', 'Generated fallback secure_token in callback for order id {id}', ['id' => $orderId]);
-
             if ($this->ordersColumnExists('secure_token')) {
+                $secureToken = bin2hex(random_bytes(32));
+                log_message('warning', 'Generated fallback secure_token in callback for order id {id}', ['id' => $orderId]);
                 $updated = (bool) \Config\Database::connect()
                     ->table('orders')
                     ->where('id', $orderId)
@@ -222,7 +221,8 @@ class PaymentController extends BaseController
                     log_message('error', 'Fallback secure_token persistence failed for order id {id}', ['id' => $orderId]);
                 }
             } else {
-                log_message('critical', 'secure_token column missing while payment success rendered for order id {id}', ['id' => $orderId]);
+                log_message('warning', 'secure_token column missing while payment success rendered for order id {id}', ['id' => $orderId]);
+                $secureToken = '';
             }
         }
 
