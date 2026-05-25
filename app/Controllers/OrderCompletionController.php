@@ -11,12 +11,12 @@ class OrderCompletionController extends BaseController
     public function show(string $token)
     {
         if (!$this->ordersColumnExists('secure_token')) {
-            return view('front/failed', ['message' => 'این سرویس هنوز فعال نشده است.']);
+            return $this->invalidLink('این سرویس هنوز فعال نشده است.');
         }
 
         $order = (new OrderModel())->where('secure_token', $token)->where('payment_status', OrderModel::STATUS_SUCCESS)->first();
-        if (!$order) return view('front/failed', ['message' => 'لینک نامعتبر است.']);
-        if (($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_CANCELLED) return view('front/failed', ['message' => 'این سفارش لغو شده است.']);
+        if (!$order) return $this->invalidLink('لینک نامعتبر است.');
+        if (($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_CANCELLED) return $this->invalidLink('این سفارش لغو شده است.');
         return view('front/complete_order', ['order' => $order, 'readonly' => ($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_COMPLETED]);
     }
 
@@ -61,6 +61,12 @@ class OrderCompletionController extends BaseController
         $model->update($order['id'], $updateData);
 
         return redirect()->back()->with('success', 'اطلاعات با موفقیت ثبت شد.');
+    }
+
+
+    private function invalidLink(string $message)
+    {
+        return view('front/document_link_invalid', ['message' => $message]);
     }
 
     private function ordersColumnExists(string $column): bool
