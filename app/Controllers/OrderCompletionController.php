@@ -10,7 +10,7 @@ class OrderCompletionController extends BaseController
 
     public function show(string $token)
     {
-        $this->ensureSecureTokenSchema();
+        $this->ensureOrderCompletionSchema();
         if (!$this->ordersColumnExists('secure_token')) {
             return $this->invalidLink('این سرویس هنوز فعال نشده است.');
         }
@@ -24,7 +24,7 @@ class OrderCompletionController extends BaseController
 
     public function submit(string $token)
     {
-        $this->ensureSecureTokenSchema();
+        $this->ensureOrderCompletionSchema();
         if (!$this->ordersColumnExists('secure_token')) {
             return redirect()->back()->with('error', 'این سرویس هنوز فعال نشده است.');
         }
@@ -42,7 +42,29 @@ class OrderCompletionController extends BaseController
             'national_id_document' => 'uploaded[national_id_document]|mime_in[national_id_document,image/jpeg,image/png,application/pdf]|max_size[national_id_document,5120]',
             'selfie_document' => 'uploaded[selfie_document]|mime_in[selfie_document,image/jpeg,image/png,application/pdf]|max_size[selfie_document,5120]',
         ];
-        if (!$this->validate($rules)) return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+
+        $messages = [
+            'address' => [
+                'required' => 'وارد کردن آدرس الزامی است.',
+                'min_length' => 'آدرس واردشده کوتاه است.',
+            ],
+            'postal_code' => [
+                'required' => 'وارد کردن کد پستی الزامی است.',
+                'regex_match' => 'کد پستی باید دقیقاً ۱۰ رقم باشد.',
+            ],
+            'national_id_document' => [
+                'uploaded' => 'بارگذاری تصویر کارت ملی الزامی است.',
+                'mime_in' => 'فرمت تصویر کارت ملی نامعتبر است (jpg/png/pdf).',
+                'max_size' => 'حجم فایل کارت ملی نباید بیشتر از ۵ مگابایت باشد.',
+            ],
+            'selfie_document' => [
+                'uploaded' => 'بارگذاری تصویر سلفی الزامی است.',
+                'mime_in' => 'فرمت تصویر سلفی نامعتبر است (jpg/png/pdf).',
+                'max_size' => 'حجم فایل سلفی نباید بیشتر از ۵ مگابایت باشد.',
+            ],
+        ];
+
+        if (!$this->validate($rules, $messages)) return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
 
         $dir = WRITEPATH . 'secure_uploads/orders/' . $order['id']; if (!is_dir($dir)) mkdir($dir, 0750, true);
         $nid = $this->request->getFile('national_id_document'); $sf = $this->request->getFile('selfie_document');
@@ -78,12 +100,8 @@ class OrderCompletionController extends BaseController
 
 
 
-    private function ensureSecureTokenSchema(): void
+    private function ensureOrderCompletionSchema(): void
     {
-        if ($this->ordersColumnExists('secure_token')) {
-            return;
-        }
-
         try {
             $db = \Config\Database::connect();
             $forge = \Config\Database::forge();
@@ -92,28 +110,48 @@ class OrderCompletionController extends BaseController
                 return;
             }
 
+            $columns = [];
             if (!$db->fieldExists('secure_token', 'orders')) {
-                $forge->addColumn('orders', [
-                    'secure_token' => [
-                        'type'       => 'VARCHAR',
-                        'constraint' => 128,
-                        'null'       => true,
-                    ],
-                ]);
+                $columns['secure_token'] = ['type' => 'VARCHAR', 'constraint' => 128, 'null' => true];
+            }
+            if (!$db->fieldExists('order_status', 'orders')) {
+                $columns['order_status'] = ['type' => 'VARCHAR', 'constraint' => 32, 'null' => true];
+            }
+            if (!$db->fieldExists('address', 'orders')) {
+                $columns['address'] = ['type' => 'TEXT', 'null' => true];
+            }
+            if (!$db->fieldExists('postal_code', 'orders')) {
+                $columns['postal_code'] = ['type' => 'VARCHAR', 'constraint' => 20, 'null' => true];
+            }
+            if (!$db->fieldExists('national_card_image', 'orders')) {
+                $columns['national_card_image'] = ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true];
+            }
+            if (!$db->fieldExists('selfie_image', 'orders')) {
+                $columns['selfie_image'] = ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true];
+            }
+            if (!$db->fieldExists('national_id_document_path', 'orders')) {
+                $columns['national_id_document_path'] = ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true];
+            }
+            if (!$db->fieldExists('selfie_document_path', 'orders')) {
+                $columns['selfie_document_path'] = ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true];
+            }
+            if (!$db->fieldExists('documents_uploaded_at', 'orders')) {
+                $columns['documents_uploaded_at'] = ['type' => 'DATETIME', 'null' => true];
             }
 
-            $this->ordersTableColumns = null;
+            if ($columns !== []) {
+                $forge->addColumn('orders', $columns);
+            }
 
             try {
                 $forge->addKey('secure_token', false, true);
                 $forge->processIndexes('orders');
             } catch (\Throwable $e) {
-                // index may already exist
             }
 
-            log_message('notice', 'Auto-repaired missing secure_token column on orders table');
+            $this->ordersTableColumns = null;
         } catch (\Throwable $e) {
-            log_message('error', 'Failed auto-repair for secure_token schema: {message}', ['message' => $e->getMessage()]);
+            log_message('error', 'Failed schema repair for order completion: {message}', ['message' => $e->getMessage()]);
         }
     }
 
