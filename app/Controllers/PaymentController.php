@@ -20,7 +20,7 @@ class PaymentController extends BaseController
             return redirect()->to('/')->with('error', 'سیم‌کارت نامعتبر یا فروخته شده است.');
         }
 
-        if (!$this->validate([
+        $nameRules = [
             'buyer_first_name'    => 'required',
             'buyer_last_name'     => 'required',
             'buyer_national_code' => 'required|exact_length[10]',
@@ -30,7 +30,9 @@ class PaymentController extends BaseController
             'birth_month'         => 'required',
             'birth_day'           => 'required',
             'rules'               => 'required',
-        ])) {
+        ];
+
+        if (!$this->validate($nameRules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
@@ -43,12 +45,18 @@ class PaymentController extends BaseController
 
         $orderModel = new OrderModel();
 
+        $firstName = trim((string) $this->request->getPost('buyer_first_name'));
+        $lastName = trim((string) $this->request->getPost('buyer_last_name'));
+        $legacyName = trim((string) $this->request->getPost('buyer_name'));
+        $fullName = trim($firstName . ' ' . $lastName);
+        if ($fullName === '') {
+            $fullName = $legacyName;
+        }
+
         $insertData = [
             'tracking_code'       => $trackingCode,
             'simcard_id'          => $simcardId,
-            'buyer_first_name'    => $this->request->getPost('buyer_first_name'),
-            'buyer_last_name'     => $this->request->getPost('buyer_last_name'),
-            'buyer_name'          => trim($this->request->getPost('buyer_first_name') . ' ' . $this->request->getPost('buyer_last_name')), 
+            'buyer_name'          => $fullName,
             'buyer_national_code' => $this->request->getPost('buyer_national_code'),
             'buyer_phone'         => $this->request->getPost('buyer_phone'),
             'buyer_father_name'   => $this->request->getPost('father_name'),
@@ -57,6 +65,14 @@ class PaymentController extends BaseController
             'payment_status'      => OrderModel::STATUS_PENDING,
             'payment_message'     => 'Order created. Waiting for gateway request.',
         ];
+
+
+        if ($this->ordersColumnExists('buyer_first_name')) {
+            $insertData['buyer_first_name'] = $firstName;
+        }
+        if ($this->ordersColumnExists('buyer_last_name')) {
+            $insertData['buyer_last_name'] = $lastName;
+        }
 
         if ($this->ordersColumnExists('secure_token')) {
             $insertData['secure_token'] = bin2hex(random_bytes(32));
