@@ -106,16 +106,8 @@ class PaymentController extends BaseController
         // Idempotency guard: never downgrade a successful payment.
         if ($order['payment_status'] === OrderModel::STATUS_SUCCESS) {
             $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
-            $secureToken = (string) ($order['secure_token'] ?? '');
-            if ($secureToken === '') {
-                return view('front/failed', ['message' => 'لینک تکمیل مدارک قابل ایجاد نیست. لطفاً با پشتیبانی تماس بگیرید.']);
-            }
 
-            return view('front/success', [
-                'order'            => $order,
-                'ref_id'           => $order['ref_id'],
-                'completeOrderUrl' => base_url('order/complete/' . $secureToken),
-            ]);
+            return view('front/success', $this->buildSuccessViewData($order, (string) ($order['ref_id'] ?? '')));
         }
 
         // User canceled, left gateway, or payment was not completed.
@@ -176,16 +168,8 @@ class PaymentController extends BaseController
             $order['payment_status'] = OrderModel::STATUS_SUCCESS;
             $order['ref_id'] = $verification['ref_id'];
             $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
-            $secureToken = (string) ($order['secure_token'] ?? '');
-            if ($secureToken === '') {
-                return view('front/failed', ['message' => 'لینک تکمیل مدارک قابل ایجاد نیست. لطفاً با پشتیبانی تماس بگیرید.']);
-            }
 
-            return view('front/success', [
-                'order'            => $order,
-                'ref_id'           => $verification['ref_id'],
-                'completeOrderUrl' => base_url('order/complete/' . $secureToken),
-            ]);
+            return view('front/success', $this->buildSuccessViewData($order, (string) $verification['ref_id']));
         }
 
         // Technical errors must not become definitive failed payments.
@@ -206,6 +190,28 @@ class PaymentController extends BaseController
         ]);
 
         return view('front/failed', ['message' => 'پرداخت توسط درگاه تأیید نشد.']);
+    }
+
+
+    private function buildSuccessViewData(array $order, string $refId): array
+    {
+        $secureToken = (string) ($order['secure_token'] ?? '');
+        $data = [
+            'order'            => $order,
+            'ref_id'           => $refId,
+            'completeOrderUrl' => '',
+            'completionWarning' => null,
+        ];
+
+        if ($secureToken !== '') {
+            $data['completeOrderUrl'] = base_url('order/complete/' . $secureToken);
+            return $data;
+        }
+
+        log_message('error', 'Payment success without secure_token for order id {id}', ['id' => $order['id'] ?? 0]);
+        $data['completionWarning'] = 'پرداخت شما با موفقیت انجام شد. لینک تکمیل مدارک هنوز آماده نیست؛ لطفاً کمی بعد دوباره مراجعه کنید یا با پشتیبانی تماس بگیرید.';
+
+        return $data;
     }
 
     private function updateOrderIfNotSuccess(OrderModel $orderModel, int $orderId, array $data): bool
