@@ -14,8 +14,9 @@ class OrderCompletionController extends BaseController
             return $this->invalidLink('این سرویس هنوز فعال نشده است.');
         }
 
-        $order = (new OrderModel())->where('secure_token', $token)->where('payment_status', OrderModel::STATUS_SUCCESS)->first();
+        $order = (new OrderModel())->where('secure_token', $token)->first();
         if (!$order) return $this->invalidLink('لینک نامعتبر است.');
+        if (!$this->isSuccessfulPaymentOrder($order)) return $this->invalidLink('این لینک هنوز برای سفارش پرداخت‌شده فعال نیست.');
         if (($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_CANCELLED) return $this->invalidLink('این سفارش لغو شده است.');
         return view('front/complete_order', ['order' => $order, 'readonly' => ($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_COMPLETED]);
     }
@@ -27,8 +28,9 @@ class OrderCompletionController extends BaseController
         }
 
         $model = new OrderModel();
-        $order = $model->where('secure_token', $token)->where('payment_status', OrderModel::STATUS_SUCCESS)->first();
+        $order = $model->where('secure_token', $token)->first();
         if (!$order) return redirect()->back()->with('error', 'لینک نامعتبر است.');
+        if (!$this->isSuccessfulPaymentOrder($order)) return redirect()->back()->with('error', 'این لینک هنوز برای سفارش پرداخت‌شده فعال نیست.');
         if (($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_COMPLETED) return redirect()->back()->with('success', 'این سفارش قبلاً تکمیل شده است.');
         if (($order['admin_status'] ?? '') === OrderModel::ADMIN_STATUS_CANCELLED) return redirect()->back()->with('error', 'این سفارش لغو شده است.');
 
@@ -63,6 +65,18 @@ class OrderCompletionController extends BaseController
         return redirect()->back()->with('success', 'اطلاعات با موفقیت ثبت شد.');
     }
 
+
+    private function isSuccessfulPaymentOrder(array $order): bool
+    {
+        $paymentStatus = strtolower((string) ($order['payment_status'] ?? ''));
+        if ($paymentStatus === OrderModel::STATUS_SUCCESS) {
+            return true;
+        }
+
+        // Backward compatibility for historical records that may not use "success"
+        // but still have a verified bank reference.
+        return !empty($order['ref_id']);
+    }
 
     private function invalidLink(string $message)
     {
