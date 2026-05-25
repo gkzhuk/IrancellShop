@@ -15,12 +15,7 @@
             
             <p class="text-muted mt-3">برای تکمیل سفارش، لطفاً مدارک خود را تکمیل کنید.</p>
             <p class="small text-muted">شماره تراکنش: <?= $ref_id ?></p>
-            
-            <?php if (!empty($completeOrderUrl)): ?>
-                <a href="<?= esc($completeOrderUrl) ?>" class="btn btn-primary mt-4">تکمیل اطلاعات و بارگذاری مدارک</a>
-            <?php else: ?>
-                <div class="alert alert-warning mt-4 mb-0"><?= esc($completionWarning ?? 'لینک تکمیل مدارک در دسترس نیست.') ?></div>
-            <?php endif; ?>
+            <a href="<?= esc($completeOrderUrl) ?>" class="btn btn-primary mt-4">تکمیل اطلاعات و بارگذاری مدارک</a>
         </div>
     </div>
 </div>

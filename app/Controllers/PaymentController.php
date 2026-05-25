@@ -107,7 +107,7 @@ class PaymentController extends BaseController
         if ($order['payment_status'] === OrderModel::STATUS_SUCCESS) {
             $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
-            return view('front/success', $this->buildSuccessViewData($order, (string) ($order['ref_id'] ?? '')));
+            return view('front/success', $this->buildSuccessViewData($orderModel, $order, (string) ($order['ref_id'] ?? '')));
         }
 
         // User canceled, left gateway, or payment was not completed.
@@ -169,7 +169,7 @@ class PaymentController extends BaseController
             $order['ref_id'] = $verification['ref_id'];
             $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
-            return view('front/success', $this->buildSuccessViewData($order, (string) $verification['ref_id']));
+            return view('front/success', $this->buildSuccessViewData($orderModel, $order, (string) $verification['ref_id']));
         }
 
         // Technical errors must not become definitive failed payments.
@@ -193,25 +193,49 @@ class PaymentController extends BaseController
     }
 
 
-    private function buildSuccessViewData(array $order, string $refId): array
+    private function buildSuccessViewData(OrderModel $orderModel, array $order, string $refId): array
     {
-        $secureToken = (string) ($order['secure_token'] ?? '');
-        $data = [
-            'order'            => $order,
-            'ref_id'           => $refId,
-            'completeOrderUrl' => '',
-            'completionWarning' => null,
-        ];
+        $orderId = (int) ($order['id'] ?? 0);
+        $resolvedOrder = $this->ensureOrderHasSecureToken($orderModel, $orderId) ?? $order;
+        $secureToken = (string) ($resolvedOrder['secure_token'] ?? '');
 
-        if ($secureToken !== '') {
-            $data['completeOrderUrl'] = base_url('order/complete/' . $secureToken);
-            return $data;
+        if ($secureToken === '' && $orderId > 0) {
+            $secureToken = bin2hex(random_bytes(32));
+            log_message('warning', 'Generated fallback secure_token in callback for order id {id}', ['id' => $orderId]);
+
+            if ($this->ordersColumnExists('secure_token')) {
+                $updated = (bool) \Config\Database::connect()
+                    ->table('orders')
+                    ->where('id', $orderId)
+                    ->update(['secure_token' => $secureToken]);
+
+                log_message('debug', 'Fallback secure_token DB update result for order id {id}: {result}', [
+                    'id' => $orderId,
+                    'result' => $updated ? 'updated' : 'not_updated',
+                ]);
+
+                $reloaded = $orderModel->find($orderId);
+                if (!empty($reloaded['secure_token'])) {
+                    $resolvedOrder = $reloaded;
+                    $secureToken = (string) $reloaded['secure_token'];
+                } else {
+                    log_message('error', 'Fallback secure_token persistence failed for order id {id}', ['id' => $orderId]);
+                }
+            } else {
+                log_message('critical', 'secure_token column missing while payment success rendered for order id {id}', ['id' => $orderId]);
+            }
         }
 
-        log_message('error', 'Payment success without secure_token for order id {id}', ['id' => $order['id'] ?? 0]);
-        $data['completionWarning'] = 'پرداخت شما با موفقیت انجام شد. لینک تکمیل مدارک هنوز آماده نیست؛ لطفاً کمی بعد دوباره مراجعه کنید یا با پشتیبانی تماس بگیرید.';
+        log_message('debug', 'Success view payload for order id {id} has token: {has_token}', [
+            'id' => $orderId,
+            'has_token' => $secureToken !== '' ? 'yes' : 'no',
+        ]);
 
-        return $data;
+        return [
+            'order'            => $resolvedOrder,
+            'ref_id'           => $refId,
+            'completeOrderUrl' => base_url('order/complete/' . $secureToken),
+        ];
     }
 
     private function updateOrderIfNotSuccess(OrderModel $orderModel, int $orderId, array $data): bool
@@ -259,7 +283,9 @@ class PaymentController extends BaseController
         }
 
         $newToken = bin2hex(random_bytes(32));
-        $orderModel->update($orderId, ['secure_token' => $newToken]);
+        log_message('debug', 'Generating secure_token for order id {id}', ['id' => $orderId]);
+        $updated = $orderModel->update($orderId, ['secure_token' => $newToken]);
+        log_message('debug', 'secure_token update result for order id {id}: {result}', ['id' => $orderId, 'result' => $updated ? 'updated' : 'not_updated']);
         $latest = $orderModel->find($orderId);
 
         if (!empty($latest['secure_token'])) {
