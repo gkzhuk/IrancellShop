@@ -41,6 +41,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], function($rout
         $routes->get('successful-orders', 'SuccessfulOrdersController::index');
         $routes->get('successful-orders/(:num)', 'SuccessfulOrdersController::show/$1');
         $routes->post('successful-orders/(:num)/status', 'SuccessfulOrdersController::updateStatus/$1');
+        $routes->get('successful-orders/(:num)/document/(:alpha)', 'SuccessfulOrdersController::document/$1/$2');
         
         
           $routes->get('ip-whitelist',            'IpWhitelistController::index');

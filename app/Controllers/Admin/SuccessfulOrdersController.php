@@ -51,6 +51,43 @@ class SuccessfulOrdersController extends BaseController
         return view('admin/successful_orders/show', ['order' => $order, 'adminStatuses' => OrderModel::adminStatuses()]);
     }
 
+
+    public function document(int $id, string $type)
+    {
+        if (!in_array($type, ['national', 'selfie'], true)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $order = (new OrderModel())
+            ->where('id', $id)
+            ->where('payment_status', OrderModel::STATUS_SUCCESS)
+            ->first();
+
+        if (!$order) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $relativePath = $type === 'national'
+            ? (($order['national_id_document_path'] ?? '') ?: ($order['national_card_image'] ?? ''))
+            : (($order['selfie_document_path'] ?? '') ?: ($order['selfie_image'] ?? ''));
+
+        $relativePath = trim((string) $relativePath);
+        if ($relativePath === '') {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $fullPath = WRITEPATH . 'secure_uploads/' . str_replace(['..', '\\'], '', $relativePath);
+        if (!is_file($fullPath)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Disposition', 'inline; filename="' . basename($fullPath) . '"')
+            ->setBody((string) file_get_contents($fullPath));
+    }
+
     public function updateStatus(int $id)
     {
         $status = (string) $this->request->getPost('admin_status');

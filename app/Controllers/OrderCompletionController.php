@@ -95,7 +95,7 @@ class OrderCompletionController extends BaseController
 
         $model->update($order['id'], $updateData);
 
-        return redirect()->back()->with('success', 'اطلاعات با موفقیت ثبت شد.');
+        return redirect()->to(base_url('/'))->with('success', 'اطلاعات با موفقیت ثبت شد.');
     }
 
 
