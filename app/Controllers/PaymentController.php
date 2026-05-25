@@ -105,11 +105,7 @@ class PaymentController extends BaseController
 
         // Idempotency guard: never downgrade a successful payment.
         if ($order['payment_status'] === OrderModel::STATUS_SUCCESS) {
-            if ($this->ordersColumnExists('secure_token') && empty($order['secure_token'])) {
-                $newToken = bin2hex(random_bytes(32));
-                $orderModel->update($order['id'], ['secure_token' => $newToken]);
-                $order['secure_token'] = $newToken;
-            }
+            $order = $this->attachSecureTokenForSuccessView($orderModel, $order);
 
             return view('front/success', [
                 'order'  => $order,
@@ -174,6 +170,7 @@ class PaymentController extends BaseController
 
             $order['payment_status'] = OrderModel::STATUS_SUCCESS;
             $order['ref_id'] = $verification['ref_id'];
+            $order = $this->attachSecureTokenForSuccessView($orderModel, $order);
 
             return view('front/success', [
                 'order'  => $order,
@@ -227,5 +224,26 @@ class PaymentController extends BaseController
         }
 
         return in_array($column, $this->ordersTableColumns, true);
+    }
+
+    private function attachSecureTokenForSuccessView(OrderModel $orderModel, array $order): array
+    {
+        if (!$this->ordersColumnExists('secure_token')) {
+            return $order;
+        }
+
+        if (!empty($order['secure_token'])) {
+            return $order;
+        }
+
+        $newToken = bin2hex(random_bytes(32));
+        $orderModel->update($order['id'], ['secure_token' => $newToken]);
+        $latest = $orderModel->find($order['id']);
+
+        if (is_array($latest) && !empty($latest['secure_token'])) {
+            $order['secure_token'] = $latest['secure_token'];
+        }
+
+        return $order;
     }
 }
