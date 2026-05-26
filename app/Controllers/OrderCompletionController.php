@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\OrderModel;
+use App\Models\SimcardModel;
+use App\Services\SmsService;
 
 class OrderCompletionController extends BaseController
 {
@@ -94,6 +96,20 @@ class OrderCompletionController extends BaseController
         }
 
         $model->update($order['id'], $updateData);
+
+
+        $sim = (new SimcardModel())->find($order['simcard_id']);
+        $simNumber = (string) ($sim['number'] ?? '-');
+        $message = "مدارک سفارش سیم‌کارت {$simNumber} با موفقیت ثبت شد و در صف بررسی قرار گرفت.
+
+نتیجه بررسی از طریق پیامک اطلاع‌رسانی خواهد شد.
+
+✅️ پشتیبانی: 09378031500";
+        try {
+            (new SmsService())->send((string) ($order['buyer_phone'] ?? ''), $message, (int) $order['id'], 'documents_uploaded');
+        } catch (\Throwable $e) {
+            log_message('error', 'SMS documents_uploaded send failed: {msg}', ['msg' => $e->getMessage()]);
+        }
 
         return redirect()->to(base_url('/'))->with('success', 'اطلاعات با موفقیت ثبت شد.');
     }

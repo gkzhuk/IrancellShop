@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\OrderModel;
+use App\Services\SmsService;
 
 class SuccessfulOrdersController extends BaseController
 {
@@ -97,7 +98,19 @@ class SuccessfulOrdersController extends BaseController
         if (!array_key_exists($status, OrderModel::adminStatuses())) {
             return redirect()->back()->with('error', 'وضعیت نامعتبر است.');
         }
-        (new OrderModel())->update($id, ['order_status' => $status]);
+        $orderModel = new OrderModel();
+        $orderModel->update($id, ['order_status' => $status]);
+        $order = $orderModel->find($id);
+        if ($order) {
+            $message = $this->statusSmsMessage($status, $order);
+            if ($message !== '') {
+                try {
+                    (new SmsService())->send((string) ($order['buyer_phone'] ?? ''), $message, (int) $id, 'status_' . $status);
+                } catch (\Throwable $e) {
+                    log_message('error', 'SMS status send failed: {msg}', ['msg' => $e->getMessage()]);
+                }
+            }
+        }
         return redirect()->back()->with('success', 'وضعیت سفارش به‌روزرسانی شد.');
     }
 
