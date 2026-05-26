@@ -102,10 +102,10 @@ class SuccessfulOrdersController extends BaseController
         $orderModel->update($id, ['order_status' => $status]);
         $order = $orderModel->find($id);
         if ($order) {
-            $message = $this->statusSmsMessage($status, $order);
-            if ($message !== '') {
+            $sms = $this->statusSmsPayload($status, $order);
+            if (!empty($sms['pattern'])) {
                 try {
-                    (new SmsService())->send((string) ($order['buyer_phone'] ?? ''), $message, (int) $id, 'status_' . $status);
+                    (new SmsService())->sendPattern((string) ($order['buyer_phone'] ?? ''), (string) $sms['pattern'], (array) $sms['params'], (int) $id);
                 } catch (\Throwable $e) {
                     log_message('error', 'SMS status send failed: {msg}', ['msg' => $e->getMessage()]);
                 }

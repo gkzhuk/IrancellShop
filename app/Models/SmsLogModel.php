@@ -9,5 +9,5 @@ class SmsLogModel extends Model
     protected $table = 'sms_logs';
     protected $returnType = 'array';
     protected $useTimestamps = true;
-    protected $allowedFields = ['mobile','message','status','api_response','related_order_id','event_key','sent_at'];
+    protected $allowedFields = ['related_order_id','mobile','pattern_code','request_payload','api_response','status','sent_at'];
 }

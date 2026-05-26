@@ -131,7 +131,7 @@ class PaymentController extends BaseController
             $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
             $smsOrder = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
-            $this->sendSmsSafe((string) ($smsOrder['buyer_phone'] ?? ''), $this->smsPaymentSuccessMessage($smsOrder), (int) $smsOrder['id'], 'payment_success');
+            $this->sendSmsSafe((string) ($smsOrder['buyer_phone'] ?? ''), 'order_payment_success', $this->smsPaymentSuccessParams($smsOrder), (int) $smsOrder['id']);
             return view('front/success', $this->buildSuccessViewData($orderModel, $order, (string) ($order['ref_id'] ?? '')));
         }
 
@@ -198,7 +198,7 @@ class PaymentController extends BaseController
             $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
             $smsOrder = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
-            $this->sendSmsSafe((string) ($smsOrder['buyer_phone'] ?? ''), $this->smsPaymentSuccessMessage($smsOrder), (int) $smsOrder['id'], 'payment_success');
+            $this->sendSmsSafe((string) ($smsOrder['buyer_phone'] ?? ''), 'order_payment_success', $this->smsPaymentSuccessParams($smsOrder), (int) $smsOrder['id']);
             return view('front/success', $this->buildSuccessViewData($orderModel, $order, (string) $verification['ref_id']));
         }
 
@@ -270,10 +270,10 @@ class PaymentController extends BaseController
     }
 
 
-    private function sendSmsSafe(string $mobile, string $message, int $orderId, string $eventKey): void
+    private function sendSmsSafe(string $mobile, string $patternCode, array $params, int $orderId): void
     {
         try {
-            (new SmsService())->send($mobile, $message, $orderId, $eventKey);
+            (new SmsService())->sendPattern($mobile, $patternCode, $params, $orderId);
         } catch (\Throwable $e) {
             log_message('error', 'SMS safe-send failed: {msg}', ['msg' => $e->getMessage()]);
         }
@@ -284,26 +284,15 @@ class PaymentController extends BaseController
         return base_url('order/complete/' . (string) ($order['secure_token'] ?? ''));
     }
 
-    private function smsPaymentSuccessMessage(array $order): string
+    private function smsPaymentSuccessParams(array $order): array
     {
         $sim = (new SimcardModel())->find($order['simcard_id']);
-        $simNumber = (string) ($sim['number'] ?? '-');
-        $secureLink = $this->buildSecureLink($order);
-        $national = (string) ($order['buyer_national_code'] ?? '-');
-
-        return "📱 پیش سفارش سیم‌کارت {$simNumber} برای کد ملی {$national} ثبت شد.
-
-خواهشمند است با ورود به لینک زیر مدارک خود را جهت ثبت و احراز هویت بارگذاری نمایید:
-{$secureLink}
-
-✔️ پس از تایید سفارش تا 20 روز کاری سیم کارت ارسال خواهد شد
-✔️ درصورتی که نتوانستید مدارک خود را در سایت بارگذاری کنید به شماره 09378031500 در بله ارسال فرمائید.
-✔️ لطفا توجه کنید که سیم کارت های به نام شما بیشتر از 10 عدد نباشد.
-✔️ درصورتی که خط دائمی ایرانسل شما بدهی داشته باشد ثبت سیم کارت شما تا تسویه بدهی به تعویق خواهد افتاد.
-✔️ امکان لغو سفارش وجود ندارد.
-✔️ نیازی به تماس جهت پیگیری نیست و سفارشات به ترتیب پردازش خواهند شد.
-
-✅️ پشتیبانی: 09378031500";
+        return [
+            'sim_number' => (string) ($sim['number'] ?? '-'),
+            'national_code' => (string) ($order['buyer_national_code'] ?? '-'),
+            'secure_link' => $this->buildSecureLink($order),
+            'mobile' => (string) ($order['buyer_phone'] ?? ''),
+        ];
     }
 
     private function updateOrderIfNotSuccess(OrderModel $orderModel, int $orderId, array $data): bool

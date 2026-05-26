@@ -100,13 +100,9 @@ class OrderCompletionController extends BaseController
 
         $sim = (new SimcardModel())->find($order['simcard_id']);
         $simNumber = (string) ($sim['number'] ?? '-');
-        $message = "مدارک سفارش سیم‌کارت {$simNumber} با موفقیت ثبت شد و در صف بررسی قرار گرفت.
-
-نتیجه بررسی از طریق پیامک اطلاع‌رسانی خواهد شد.
-
-✅️ پشتیبانی: 09378031500";
+        $params = ['sim_number' => $simNumber];
         try {
-            (new SmsService())->send((string) ($order['buyer_phone'] ?? ''), $message, (int) $order['id'], 'documents_uploaded');
+            (new SmsService())->sendPattern((string) ($order['buyer_phone'] ?? ''), 'documents_uploaded', $params, (int) $order['id']);
         } catch (\Throwable $e) {
             log_message('error', 'SMS documents_uploaded send failed: {msg}', ['msg' => $e->getMessage()]);
         }
