@@ -6,6 +6,7 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 $routes->get('/', 'Home::index');
+$routes->view('/about', 'front/about');
 $routes->get('/i/(:num)', 'Home::order/$1'); // Assuming order page is handled in Home or PaymentController, prompt says /i/{number}
 $routes->get('/AjaxSearchNumber', 'Home::ajaxSearchNumber');
 
