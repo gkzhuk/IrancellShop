@@ -1,6 +1,15 @@
 <?= $this->extend('admin/layout') ?>
 
 <?= $this->section('content') ?>
+<?php
+    $importStatusLabels = [
+        'pending' => 'در انتظار',
+        'processing' => 'در حال پردازش',
+        'completed' => 'تکمیل شده',
+        'done' => 'تکمیل شده',
+        'failed' => 'ناموفق',
+    ];
+?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>مدیریت سیم‌کارت‌ها</h2>
     <div>
@@ -48,11 +57,13 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">شروع کمپین عمومی</label>
-                <input type="datetime-local" name="global_discount_start" class="form-control" value="<?= !empty($discountSettings['global_discount_start']) ? date('Y-m-d\TH:i', strtotime($discountSettings['global_discount_start'])) : '' ?>">
+                <input type="text" name="global_discount_start" class="form-control jalali-datetime-input" dir="ltr" placeholder="مثال: 1403/03/10 09:00" value="<?= esc($discountSettingsJalali['global_discount_start'] ?? '', 'attr') ?>">
+                <small class="text-muted">تاریخ را به شمسی و با قالب YYYY/MM/DD HH:mm وارد کنید.</small>
             </div>
             <div class="col-md-3">
                 <label class="form-label">پایان کمپین عمومی</label>
-                <input type="datetime-local" name="global_discount_end" class="form-control" value="<?= !empty($discountSettings['global_discount_end']) ? date('Y-m-d\TH:i', strtotime($discountSettings['global_discount_end'])) : '' ?>">
+                <input type="text" name="global_discount_end" class="form-control jalali-datetime-input" dir="ltr" placeholder="مثال: 1403/03/20 23:59" value="<?= esc($discountSettingsJalali['global_discount_end'] ?? '', 'attr') ?>">
+                <small class="text-muted">تاریخ را به شمسی و با قالب YYYY/MM/DD HH:mm وارد کنید.</small>
             </div>
             <div class="col-md-3 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100">ذخیره تنظیمات</button>
@@ -83,7 +94,7 @@
                 <tr>
                     <td><?= $job['id'] ?></td>
                     <td><?= esc($job['original_filename'] ?? basename($job['file_path'])) ?></td>
-                    <td><?= esc($job['status']) ?></td>
+                    <td><?= esc($importStatusLabels[$job['status']] ?? $job['status']) ?></td>
                     <td><?= number_format((int) $job['processed_rows']) ?> / <?= number_format((int) $job['total_rows']) ?></td>
                     <td><?= number_format((int) $job['inserted_rows']) ?></td>
                     <td><?= number_format((int) $job['updated_rows']) ?></td>
@@ -92,7 +103,7 @@
                         <?php if(in_array($job['status'], ['pending', 'processing'], true)): ?>
                         <form action="<?= base_url('admin/simcards/imports/' . $job['id'] . '/process') ?>" method="post" class="d-inline">
                             <?= csrf_field() ?>
-                            <button type="submit" class="btn btn-sm btn-outline-primary">پردازش یک بخش</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">ادامه خودکار پردازش</button>
                         </form>
                         <?php endif; ?>
                     </td>
@@ -251,8 +262,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">اندازه هر بخش پردازش</label>
-                        <input type="number" class="form-control" name="chunk_size" value="300" min="50" max="1000">
-                        <small class="text-muted">برای هاست اشتراکی مقدار ۲۰۰ تا ۳۰۰ پیشنهاد می‌شود.</small>
+                        <input type="number" class="form-control" name="chunk_size" value="300" readonly>
+                        <small class="text-muted">پردازش خودکار با بخش‌های ثابت ۳۰۰ ردیفی انجام می‌شود.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -263,6 +274,20 @@
         </div>
     </div>
 </div>
+
+<script>
+document.querySelectorAll('.jalali-datetime-input').forEach(function (input) {
+    input.addEventListener('blur', function () {
+        var value = input.value.trim().replace(/-/g, '/');
+        if (value && !/^1[34]\d{2}\/\d{1,2}\/\d{1,2}(\s+\d{1,2}:\d{1,2})?$/.test(value)) {
+            input.setCustomValidity('تاریخ را به شمسی و با قالب YYYY/MM/DD HH:mm وارد کنید.');
+        } else {
+            input.setCustomValidity('');
+            input.value = value;
+        }
+    });
+});
+</script>
 
 <!-- Import Results Modal (triggered via session flashdata if needed, but for simplicity we show alert) -->
 <?php if(session()->getFlashdata('import_report')): ?>

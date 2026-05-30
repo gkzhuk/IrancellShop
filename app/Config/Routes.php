@@ -35,7 +35,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], function($rout
         $routes->post('simcards/update/(:num)', 'SimcardsController::update/$1');
         $routes->get('simcards/delete/(:num)', 'SimcardsController::delete/$1');
         $routes->post('simcards/import', 'SimcardsController::import');
-        $routes->post('simcards/imports/(:num)/process', 'SimcardsController::processImport/$1');
+        $routes->match(['get', 'post'], 'simcards/imports/(:num)/process', 'SimcardsController::processImport/$1');
         $routes->post('simcards/discount-settings', 'SimcardsController::discountSettings');
         
         // Payment Management

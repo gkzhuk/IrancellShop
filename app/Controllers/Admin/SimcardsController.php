@@ -28,13 +28,16 @@ class SimcardsController extends BaseController
         $jobModel = new ExcelImportJobModel();
         $settingModel = new InventorySettingModel();
 
+        $discountSettings = $settingModel->getDiscountSettings();
+
         $data = [
-            'simcards'         => $model->paginate(20),
-            'pager'            => $model->pager,
-            'status'           => $status,
-            'search'           => $search,
-            'importJobs'       => $jobModel->orderBy('id', 'DESC')->findAll(10),
-            'discountSettings' => $settingModel->getDiscountSettings(),
+            'simcards'               => $model->paginate(20),
+            'pager'                  => $model->pager,
+            'status'                 => $status,
+            'search'                 => $search,
+            'importJobs'             => $jobModel->orderBy('id', 'DESC')->findAll(10),
+            'discountSettings'       => $discountSettings,
+            'discountSettingsJalali' => $this->formatDiscountSettingsForJalali($discountSettings),
         ];
 
         return view('admin/simcards/index', $data);
@@ -111,25 +114,34 @@ class SimcardsController extends BaseController
             'original_filename' => $file->getClientName(),
             'status'            => 'pending',
             'current_row'       => 2,
-            'chunk_size'        => (int) ($this->request->getPost('chunk_size') ?: 300),
+            'chunk_size'        => 300,
         ]);
 
         log_message('info', 'Inventory import job created: ' . $jobId);
 
-        return redirect()->to('/admin/simcards')->with(
-            'success',
-            'فایل با موفقیت ذخیره شد و job ایمپورت ایجاد شد. برای پردازش تدریجی، کران php spark imports:process را اجرا کنید.'
-        );
+        return redirect()->to('/admin/simcards/imports/' . $jobId . '/process');
     }
 
     public function processImport($id)
     {
         $service = new InventoryImportService();
-        $result = $service->processChunk((int) $id);
+        $result = $service->processJobUntilPaused((int) $id, 20);
+        $status = $result['status'] ?? 'processing';
 
-        $message = 'یک بخش از فایل پردازش شد. وضعیت: ' . ($result['status'] ?? '-');
+        if (!empty($result['paused']) && in_array($status, ['pending', 'processing'], true)) {
+            $continueUrl = base_url('admin/simcards/imports/' . (int) $id . '/process');
 
-        return redirect()->to('/admin/simcards')->with('success', $message);
+            return $this->response->setBody(view('admin/simcards/import_processing', [
+                'continueUrl' => $continueUrl,
+                'result'      => $result,
+            ]));
+        }
+
+        $message = $status === 'completed'
+            ? 'ایمپورت فایل اکسل با موفقیت تکمیل شد.'
+            : 'پردازش ایمپورت متوقف شد. وضعیت: ' . $this->importStatusLabel($status);
+
+        return redirect()->to('/admin/simcards')->with($status === 'failed' ? 'error' : 'success', $message);
     }
 
     public function discountSettings()
@@ -153,9 +165,120 @@ class SimcardsController extends BaseController
             return null;
         }
 
+        $value = trim(str_replace('T', ' ', $value));
+
+        if (preg_match('/^(1[34]\d{2})[-\/](\d{1,2})[-\/](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2}))?$/', $value, $matches)) {
+            $jalaliMonth = (int) $matches[2];
+            $jalaliDay = (int) $matches[3];
+            $hour = isset($matches[4]) ? (int) $matches[4] : 0;
+            $minute = isset($matches[5]) ? (int) $matches[5] : 0;
+
+            if ($jalaliMonth < 1 || $jalaliMonth > 12 || $jalaliDay < 1 || $jalaliDay > 31 || $hour > 23 || $minute > 59) {
+                return null;
+            }
+
+            [$gy, $gm, $gd] = $this->jalaliToGregorian((int) $matches[1], $jalaliMonth, $jalaliDay);
+
+            return sprintf('%04d-%02d-%02d %02d:%02d:00', $gy, $gm, $gd, $hour, $minute);
+        }
+
         $timestamp = strtotime($value);
 
         return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
+    }
+
+    private function formatDiscountSettingsForJalali(array $settings): array
+    {
+        return [
+            'global_discount_start' => $this->formatDateTimeForJalaliInput($settings['global_discount_start'] ?? null),
+            'global_discount_end'   => $this->formatDateTimeForJalaliInput($settings['global_discount_end'] ?? null),
+        ];
+    }
+
+    private function formatDateTimeForJalaliInput(?string $value): string
+    {
+        if (!$value) {
+            return '';
+        }
+
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return '';
+        }
+
+        [$jy, $jm, $jd] = $this->gregorianToJalali((int) date('Y', $timestamp), (int) date('n', $timestamp), (int) date('j', $timestamp));
+
+        return sprintf('%04d/%02d/%02d %s', $jy, $jm, $jd, date('H:i', $timestamp));
+    }
+
+    private function importStatusLabel(string $status): string
+    {
+        return [
+            'pending'    => 'در انتظار',
+            'processing' => 'در حال پردازش',
+            'completed'  => 'تکمیل شده',
+            'done'       => 'تکمیل شده',
+            'failed'     => 'ناموفق',
+        ][$status] ?? $status;
+    }
+
+    private function jalaliToGregorian(int $jy, int $jm, int $jd): array
+    {
+        $jy += 1595;
+        $days = -355668 + (365 * $jy) + intdiv($jy, 33) * 8 + intdiv(($jy % 33) + 3, 4) + $jd;
+        $days += ($jm < 7) ? (($jm - 1) * 31) : ((($jm - 7) * 30) + 186);
+        $gy = 400 * intdiv($days, 146097);
+        $days %= 146097;
+
+        if ($days > 36524) {
+            $gy += 100 * intdiv(--$days, 36524);
+            $days %= 36524;
+            if ($days >= 365) {
+                $days++;
+            }
+        }
+
+        $gy += 4 * intdiv($days, 1461);
+        $days %= 1461;
+
+        if ($days > 365) {
+            $gy += intdiv($days - 1, 365);
+            $days = ($days - 1) % 365;
+        }
+
+        $gd = $days + 1;
+        $months = [0, 31, (($gy % 4 === 0 && $gy % 100 !== 0) || ($gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        for ($gm = 1; $gm <= 12 && $gd > $months[$gm]; $gm++) {
+            $gd -= $months[$gm];
+        }
+
+        return [$gy, $gm, $gd];
+    }
+
+    private function gregorianToJalali(int $gy, int $gm, int $gd): array
+    {
+        $days = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+        $gy2 = ($gm > 2) ? ($gy + 1) : $gy;
+        $totalDays = 355666 + (365 * $gy) + intdiv($gy2 + 3, 4) - intdiv($gy2 + 99, 100) + intdiv($gy2 + 399, 400) + $gd + $days[$gm - 1];
+        $jy = -1595 + (33 * intdiv($totalDays, 12053));
+        $totalDays %= 12053;
+        $jy += 4 * intdiv($totalDays, 1461);
+        $totalDays %= 1461;
+
+        if ($totalDays > 365) {
+            $jy += intdiv($totalDays - 1, 365);
+            $totalDays = ($totalDays - 1) % 365;
+        }
+
+        if ($totalDays < 186) {
+            $jm = 1 + intdiv($totalDays, 31);
+            $jd = 1 + ($totalDays % 31);
+        } else {
+            $jm = 7 + intdiv($totalDays - 186, 30);
+            $jd = 1 + (($totalDays - 186) % 30);
+        }
+
+        return [$jy, $jm, $jd];
     }
 
 }

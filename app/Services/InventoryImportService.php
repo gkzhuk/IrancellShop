@@ -39,10 +39,40 @@ class InventoryImportService
                 break;
             }
 
-            $results[] = $this->processChunk((int) $job['id']);
+            $results[] = $this->processJobUntilPaused((int) $job['id'], max(1, $deadline - time()));
         }
 
         return $results;
+    }
+
+    public function processJobUntilPaused(int $jobId, int $maxSeconds = 20): array
+    {
+        $deadline = time() + max(1, $maxSeconds);
+        $chunks = 0;
+        $totals = [
+            'inserted' => 0,
+            'updated'  => 0,
+            'failed'   => 0,
+        ];
+        $lastResult = ['status' => 'processing'];
+
+        do {
+            $lastResult = $this->processChunk($jobId);
+            $chunks++;
+
+            foreach ($totals as $key => $value) {
+                $totals[$key] += (int) ($lastResult[$key] ?? 0);
+            }
+        } while (
+            in_array($lastResult['status'] ?? '', ['pending', 'processing'], true)
+            && time() < $deadline
+        );
+
+        return array_merge($lastResult, $totals, [
+            'job_id' => $jobId,
+            'chunks' => $chunks,
+            'paused' => in_array($lastResult['status'] ?? '', ['pending', 'processing'], true),
+        ]);
     }
 
     public function processChunk(int $jobId): array
