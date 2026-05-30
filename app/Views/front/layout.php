@@ -99,13 +99,6 @@
             line-height: 2;
             background: #fffdfa;
         }
-        .rules-intro {
-            background: rgba(255, 215, 0, .16);
-            border: 1px solid rgba(255, 193, 7, .35);
-            border-radius: 1rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
         .rules-section {
             padding: 1.1rem 0;
             border-bottom: 1px solid rgba(31, 31, 31, .08);
@@ -164,8 +157,8 @@
                 <span>نمایندگی ایرانسل - اسماعیل بیگی</span>
             </a>
             <div class="navbar-actions d-flex align-items-center">
-                <a class="nav-link-pill" href="<?= base_url('#about') ?>">درباره ما</a>
-                <button class="nav-link-pill bg-transparent" type="button" data-bs-toggle="modal" data-bs-target="#rulesModal">قوانین و مقررات</button>
+                <a class="nav-link-pill" href="<?= base_url('about') ?>">درباره ما</a>
+                <button class="nav-link-pill bg-transparent text-center" type="button" data-bs-toggle="modal" data-bs-target="#rulesModal">قوانین و مقررات</button>
                 <button class="btn btn-outline-dark btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#contactModal">تماس با ما</button>
             </div>
         </div>
@@ -176,7 +169,7 @@
     <footer>
         <div class="container text-center">
             <div class="footer-links d-flex flex-wrap justify-content-center gap-3 mb-3">
-                <a href="<?= base_url('#about') ?>">درباره ما</a>
+                <a href="<?= base_url('about') ?>">درباره ما</a>
                 <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="modal" data-bs-target="#rulesModal">قوانین و مقررات</button>
                 <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="modal" data-bs-target="#contactModal">تماس با ما</button>
             </div>
@@ -212,27 +205,33 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body rules-body">
-                    <div class="rules-intro">
-                        کاربر گرامی، لطفاً پیش از ثبت سفارش این قوانین را با دقت مطالعه نمایید. ثبت پیش‌خرید به منزله پذیرش کامل قوانین است.
-                    </div>
+                    <section class="rules-section pt-0">
+                        <h6>۱. مقدمه و پذیرش قوانین</h6>
+                        <p class="mb-0">کاربر گرامی، لطفاً پیش از ثبت سفارش این قوانین را با دقت مطالعه نمایید. ثبت پیش‌خرید به منزله پذیرش کامل قوانین است.</p>
+                    </section>
 
                     <section class="rules-section">
-                        <h6>۱. ماهیت سفارش</h6>
+                        <h6>۲. ماهیت سفارش</h6>
                         <p class="mb-0">تمامی سفارش‌های ثبت‌شده در این سایت در مرحله‌ی اول پیش‌خرید محسوب می‌شود. پرداخت اولیه تنها به‌عنوان رزرو شماره‌ی انتخابی شما است.</p>
                     </section>
 
                     <section class="rules-section">
-                        <h6>۲. تماس جهت تکمیل خرید</h6>
+                        <h6>۳. تماس جهت تکمیل خرید</h6>
                         <p class="mb-0">پس از ثبت پیش‌خرید، طی ۲۴ تا ۷۲ ساعت کاری کارشناسان ما با شما تماس گرفته و جهت تأیید نهایی اطلاعات، دریافت کد تأیید و تکمیل مراحل انتقال مالکیت و سند سیم‌کارت اقدام خواهد شد.</p>
                     </section>
 
                     <section class="rules-section">
-                        <h6>۳. احتمال فروش توسط سایر نمایندگی‌ها</h6>
-                        <p class="mb-0">ممکن است شماره سیم‌کارت به دلیل فروش هم‌زمان در نمایندگی‌های دیگر ایرانسل، پیش از تماس نهایی به فروش برسد. در این صورت سایت هیچ مسئولیتی ندارد و مبلغ پرداختی به‌طور کامل عودت داده می‌شود یا می‌توانید شماره دیگری انتخاب کنید.</p>
+                        <h6>۴. احتمال فروش توسط سایر نمایندگی‌ها</h6>
+                        <p class="mb-0">ممکن است شماره سیم‌کارت به دلیل فروش هم‌زمان در نمایندگی‌های دیگر ایرانسل، پیش از تماس نهایی به فروش برسد.</p>
                     </section>
 
                     <section class="rules-section">
-                        <h6>۴. مدارک موردنیاز</h6>
+                        <h6>۵. عودت وجه یا انتخاب شماره جایگزین</h6>
+                        <p class="mb-0">در این صورت سایت هیچ مسئولیتی ندارد و مبلغ پرداختی به‌طور کامل عودت داده می‌شود یا می‌توانید شماره دیگری انتخاب کنید.</p>
+                    </section>
+
+                    <section class="rules-section">
+                        <h6>۶. مدارک موردنیاز</h6>
                         <ul>
                             <li>ارائه مدارک هویتی مانند کارت ملی برای تکمیل فرآیند ثبت‌نام و انتقال مالکیت الزامی است.</li>
                             <li>عدم همکاری در ارائه مدارک موجب لغو سفارش خواهد شد.</li>
@@ -240,18 +239,22 @@
                     </section>
 
                     <section class="rules-section">
-                        <h6>۵. تعهدات کاربر</h6>
-                        <p>کاربر موظف است هنگام ثبت اطلاعات، مشخصات صحیح و قابل تماس وارد کند. در صورت عدم پاسخگویی یا عدم امکان تکمیل فرآیند، سفارش لغو خواهد شد.</p>
+                        <h6>۷. تعهدات کاربر</h6>
+                        <p class="mb-0">کاربر موظف است هنگام ثبت اطلاعات، مشخصات صحیح و قابل تماس وارد کند. در صورت عدم پاسخگویی یا عدم امکان تکمیل فرآیند، سفارش لغو خواهد شد.</p>
+                    </section>
+
+                    <section class="rules-section">
+                        <h6>۸. لغو سفارش توسط کاربر</h6>
                         <div class="rules-warning">در صورتیکه لغو سفارش توسط کاربر صورت بگیرد، با احترام ۲۵ تا۳۰ درصد از مبلغ سفارش به عنوان جریمه و خسارت کسر میگردد.</div>
                     </section>
 
                     <section class="rules-section">
-                        <h6>۶. حریم خصوصی و امنیت</h6>
+                        <h6>۹. حریم خصوصی و امنیت</h6>
                         <p class="mb-0">سایت موظف است اطلاعات شما را محرمانه نگه دارد و از آن تنها برای نهایی‌سازی خرید استفاده کند.</p>
                     </section>
 
                     <section class="rules-section">
-                        <h6>۷. پذیرش نهایی</h6>
+                        <h6>۱۰. پذیرش نهایی</h6>
                         <p class="mb-0">با ثبت سفارش در سایت، شما اعلام می‌کنید که کلیه قوانین فوق را مطالعه کرده و به آن‌ها پایبند هستید.</p>
                     </section>
                 </div>

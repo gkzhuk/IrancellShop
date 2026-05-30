@@ -12,12 +12,10 @@
             <div class="col-md-8 col-lg-5">
                 <div class="soft-card border-0 p-3 p-md-4">
                     <div class="card-body p-0">
-                        <div class="d-flex align-items-center justify-content-center justify-content-lg-start gap-2 mb-3">
-                            <span class="icon-badge"><i class="bi bi-phone fs-3"></i></span>
-                            <div class="text-end">
-                                <h2 class="h5 fw-bold mb-1">بررسی شماره</h2>
-                                <p class="small text-muted mb-0">فرمت شماره باید با ۰۹ شروع شود.</p>
-                            </div>
+                        <div class="text-center mb-3">
+                            <span class="icon-badge mb-3"><i class="bi bi-phone fs-3"></i></span>
+                            <h2 class="h5 fw-bold mb-2">بررسی شماره</h2>
+                            <p class="small text-muted mb-0">فرمت شماره باید با ۰۹ شروع شود.</p>
                         </div>
                         <label class="form-label fw-bold" for="mobileInput">شماره مورد نظر خود را وارد کنید</label>
                         <div class="input-group input-group-lg input-group-responsive mb-3" dir="ltr">
@@ -73,7 +71,8 @@
                 <h2 class="section-title h3 mb-3">نمایندگی ایرانسل اسماعیلی بیگی</h2>
                 <p class="section-subtitle mx-0 mb-4">نمایندگی ایرانسل اسماعیلی بیگی، به عنوان یکی از نمایندگان برتر در شهر کرمان در حوزه فروش محصولات ارتباطی از جمله مودم و سیم‌کارت، در راستای ارتقای کیفیت ارتباطی و خدمات فروش فعالیت می‌کند.</p>
                 <div class="d-flex flex-wrap gap-2">
-                    <button class="btn btn-dark rounded-pill px-4" type="button" data-bs-toggle="modal" data-bs-target="#contactModal">اطلاعات تماس</button>
+                    <a class="btn btn-dark rounded-pill px-4" href="<?= base_url('about') ?>">مشاهده صفحه درباره ما</a>
+                    <button class="btn btn-outline-dark rounded-pill px-4" type="button" data-bs-toggle="modal" data-bs-target="#contactModal">اطلاعات تماس</button>
                     <button class="btn btn-outline-dark rounded-pill px-4" type="button" data-bs-toggle="modal" data-bs-target="#rulesModal">قوانین و مقررات</button>
                 </div>
             </div>
@@ -109,7 +108,7 @@
                 </div>
                 <div class="col-lg-5">
                     <div class="d-grid d-sm-flex gap-2 justify-content-lg-end">
-                        <a class="btn btn-outline-dark rounded-pill px-4" href="#about">درباره ما</a>
+                        <a class="btn btn-outline-dark rounded-pill px-4" href="<?= base_url('about') ?>">درباره ما</a>
                         <button class="btn btn-warning rounded-pill px-4" type="button" data-bs-toggle="modal" data-bs-target="#rulesModal">قوانین و مقررات</button>
                     </div>
                 </div>
