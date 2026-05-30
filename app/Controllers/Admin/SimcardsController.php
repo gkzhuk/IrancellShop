@@ -3,8 +3,10 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\ExcelImportJobModel;
+use App\Models\InventorySettingModel;
 use App\Models\SimcardModel;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Services\InventoryImportService;
 
 class SimcardsController extends BaseController
 {
@@ -23,11 +25,16 @@ class SimcardsController extends BaseController
             $model->like('number', $search);
         }
 
+        $jobModel = new ExcelImportJobModel();
+        $settingModel = new InventorySettingModel();
+
         $data = [
-            'simcards' => $model->paginate(20),
-            'pager'    => $model->pager,
-            'status'   => $status,
-            'search'   => $search
+            'simcards'         => $model->paginate(20),
+            'pager'            => $model->pager,
+            'status'           => $status,
+            'search'           => $search,
+            'importJobs'       => $jobModel->orderBy('id', 'DESC')->findAll(10),
+            'discountSettings' => $settingModel->getDiscountSettings(),
         ];
 
         return view('admin/simcards/index', $data);
@@ -81,82 +88,74 @@ class SimcardsController extends BaseController
     {
         $file = $this->request->getFile('excel_file');
 
-        if (!$file->isValid()) {
+        if (!$file || !$file->isValid()) {
             return redirect()->back()->with('error', 'فایل نامعتبر است.');
         }
 
-        try {
-            $spreadsheet = IOFactory::load($file->getTempName());
-            $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray();
-
-            $model = new SimcardModel();
-            $successCount = 0;
-            $errorCount = 0;
-            $errors = [];
-
-            foreach ($rows as $index => $row) {
-                // Skip header or empty rows if necessary, checking if first col looks like number
-                if (empty($row[0])) continue;
-
-                $number = trim((string)$row[0]);
-                $price = isset($row[1]) ? (int)str_replace(',', '', (string)$row[1]) : 0;
-
-                // Normalize number
-                // If 10 digits and starts with 9, prepend 0
-                if (preg_match('/^9\d{9}$/', $number)) {
-                    $number = '0' . $number;
-                }
-
-                // Validate number format: 11 digits starting with 09
-                if (!preg_match('/^09\d{9}$/', $number)) {
-                    $errorCount++;
-                    $errors[] = "سطر " . ($index + 1) . ": شماره نامعتبر ($number)";
-                    continue;
-                }
-
-                // Check duplicate
-                if ($model->where('number', $number)->countAllResults() > 0) {
-                    $errorCount++;
-                    $errors[] = "سطر " . ($index + 1) . ": شماره تکراری ($number)";
-                    continue;
-                }
-
-                // Insert
-                try {
-                    $result = $model->insert([
-                        'number' => $number,
-                        'price'  => $price,
-                        'status' => 'free',
-                    ]);
-                    
-                    if ($result === false) {
-                        $errorCount++;
-                        $errors[] = "سطر " . ($index + 1) . ": خطا در اعتبارسنجی ($number)";
-                    } else {
-                        $successCount++;
-                    }
-                } catch (\Exception $e) {
-                    $errorCount++;
-                    $errors[] = "سطر " . ($index + 1) . ": خطا در ثبت ($number)";
-                }
-            }
-
-            $report = "<h5>نتایج ایمپورت:</h5>";
-            $report .= "<p class='text-success'>تعداد موفق: $successCount</p>";
-            $report .= "<p class='text-danger'>تعداد خطا: $errorCount</p>";
-            if (!empty($errors)) {
-                $report .= "<ul>";
-                foreach ($errors as $err) {
-                    $report .= "<li>$err</li>";
-                }
-                $report .= "</ul>";
-            }
-
-            return redirect()->to('/admin/simcards')->with('import_report', $report);
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'خطا در پردازش فایل اکسل: ' . $e->getMessage());
+        $extension = strtolower($file->getClientExtension());
+        if (!in_array($extension, ['xlsx', 'xls', 'csv'], true)) {
+            return redirect()->back()->with('error', 'فقط فایل‌های xlsx، xls یا csv قابل قبول هستند.');
         }
+
+        $uploadDir = WRITEPATH . 'uploads/imports';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $storedName = $file->getRandomName();
+        $file->move($uploadDir, $storedName);
+
+        $jobModel = new ExcelImportJobModel();
+        $jobId = $jobModel->insert([
+            'file_path'         => $uploadDir . DIRECTORY_SEPARATOR . $storedName,
+            'original_filename' => $file->getClientName(),
+            'status'            => 'pending',
+            'current_row'       => 2,
+            'chunk_size'        => (int) ($this->request->getPost('chunk_size') ?: 300),
+        ]);
+
+        log_message('info', 'Inventory import job created: ' . $jobId);
+
+        return redirect()->to('/admin/simcards')->with(
+            'success',
+            'فایل با موفقیت ذخیره شد و job ایمپورت ایجاد شد. برای پردازش تدریجی، کران php spark imports:process را اجرا کنید.'
+        );
     }
+
+    public function processImport($id)
+    {
+        $service = new InventoryImportService();
+        $result = $service->processChunk((int) $id);
+
+        $message = 'یک بخش از فایل پردازش شد. وضعیت: ' . ($result['status'] ?? '-');
+
+        return redirect()->to('/admin/simcards')->with('success', $message);
+    }
+
+    public function discountSettings()
+    {
+        $settingModel = new InventorySettingModel();
+
+        $enableDiscounts = $this->request->getPost('enable_discounts') === '1' ? '1' : '0';
+        $globalStart = $this->normalizeDateTimeInput($this->request->getPost('global_discount_start'));
+        $globalEnd = $this->normalizeDateTimeInput($this->request->getPost('global_discount_end'));
+
+        $settingModel->setValue('enable_discounts', $enableDiscounts);
+        $settingModel->setValue('global_discount_start', $globalStart);
+        $settingModel->setValue('global_discount_end', $globalEnd);
+
+        return redirect()->to('/admin/simcards')->with('success', 'تنظیمات تخفیف ذخیره شد.');
+    }
+
+    private function normalizeDateTimeInput(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $timestamp = strtotime($value);
+
+        return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
+    }
+
 }

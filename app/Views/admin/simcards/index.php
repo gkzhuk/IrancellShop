@@ -33,6 +33,82 @@
     </div>
 </div>
 
+
+<div class="card mb-4">
+    <div class="card-header">تنظیمات تخفیف</div>
+    <div class="card-body">
+        <form action="<?= base_url('admin/simcards/discount-settings') ?>" method="post" class="row g-3">
+            <?= csrf_field() ?>
+            <div class="col-md-3">
+                <label class="form-label">وضعیت تخفیف‌ها</label>
+                <select name="enable_discounts" class="form-select">
+                    <option value="0" <?= empty($discountSettings['enable_discounts']) ? 'selected' : '' ?>>غیرفعال</option>
+                    <option value="1" <?= !empty($discountSettings['enable_discounts']) ? 'selected' : '' ?>>فعال</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">شروع کمپین عمومی</label>
+                <input type="datetime-local" name="global_discount_start" class="form-control" value="<?= !empty($discountSettings['global_discount_start']) ? date('Y-m-d\TH:i', strtotime($discountSettings['global_discount_start'])) : '' ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">پایان کمپین عمومی</label>
+                <input type="datetime-local" name="global_discount_end" class="form-control" value="<?= !empty($discountSettings['global_discount_end']) ? date('Y-m-d\TH:i', strtotime($discountSettings['global_discount_end'])) : '' ?>">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">ذخیره تنظیمات</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?php if(!empty($importJobs)): ?>
+<div class="card mb-4">
+    <div class="card-header">آخرین Jobهای ایمپورت</div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>فایل</th>
+                    <th>وضعیت</th>
+                    <th>پردازش‌شده</th>
+                    <th>درج</th>
+                    <th>بروزرسانی</th>
+                    <th>خطا</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($importJobs as $job): ?>
+                <tr>
+                    <td><?= $job['id'] ?></td>
+                    <td><?= esc($job['original_filename'] ?? basename($job['file_path'])) ?></td>
+                    <td><?= esc($job['status']) ?></td>
+                    <td><?= number_format((int) $job['processed_rows']) ?> / <?= number_format((int) $job['total_rows']) ?></td>
+                    <td><?= number_format((int) $job['inserted_rows']) ?></td>
+                    <td><?= number_format((int) $job['updated_rows']) ?></td>
+                    <td><?= number_format((int) $job['failed_rows']) ?></td>
+                    <td>
+                        <?php if(in_array($job['status'], ['pending', 'processing'], true)): ?>
+                        <form action="<?= base_url('admin/simcards/imports/' . $job['id'] . '/process') ?>" method="post" class="d-inline">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">پردازش یک بخش</button>
+                        </form>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php if(!empty($job['error_log'])): ?>
+                <tr>
+                    <td colspan="8"><small class="text-danger"><pre class="mb-0" style="white-space: pre-wrap; direction:ltr; text-align:left;"><?= esc($job['error_log']) ?></pre></small></td>
+                </tr>
+                <?php endif; ?>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -40,8 +116,9 @@
                 <thead>
                     <tr>
                         <th>شماره</th>
-                        <th>قیمت (ریال)</th>
-                        <th>قیمت (تومان)</th>
+                        <th>قیمت نهایی (ریال)</th>
+                        <th>قیمت اصلی (ریال)</th>
+                        <th>تخفیف</th>
                         <th>وضعیت</th>
                         <th>عملیات</th>
                     </tr>
@@ -50,8 +127,23 @@
                     <?php foreach($simcards as $sim): ?>
                     <tr>
                         <td><?= $sim['number'] ?></td>
+                        <?php
+                            $originalPrice = $sim['original_price'] ?? $sim['price'];
+                            $discountPercent = (float) ($sim['discount_percent'] ?? 0);
+                            $discountEndsAt = $sim['discount_ends_at'] ?? null;
+                        ?>
                         <td><?= number_format($sim['price']) ?></td>
-                        <td><?= number_format($sim['price'] / 10) ?></td>
+                        <td><?= number_format($originalPrice) ?></td>
+                        <td>
+                            <?php if($discountPercent > 0): ?>
+                                <span class="badge bg-info"><?= rtrim(rtrim(number_format($discountPercent, 2), '0'), '.') ?>٪</span>
+                                <?php if($discountEndsAt): ?>
+                                    <small class="d-block text-muted">تا <?= esc($discountEndsAt) ?></small>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span class="text-muted">-</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php if($sim['status'] == 'free'): ?>
                                 <span class="badge bg-success">آزاد</span>
@@ -146,14 +238,21 @@
                 <?= csrf_field() ?>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        فایل اکسل باید دارای دو ستون باشد:<br>
+                        فایل اکسل می‌تواند ستون‌های زیر را داشته باشد:<br>
                         ستون اول: شماره (مثلا 9123456789)<br>
-                        ستون دوم: قیمت به ریال<br>
-                        شماره‌های تکراری نادیده گرفته می‌شوند.
+                        ستون دوم: قیمت اصلی به ریال<br>
+                        ستون سوم: درصد تخفیف (اختیاری)<br>
+                        ستون چهارم: تاریخ پایان تخفیف همان ردیف (اختیاری)<br>
+                        شماره‌های تکراری دیگر حذف نمی‌شوند و اطلاعات موجود آن‌ها به‌روزرسانی می‌شود.
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">فایل اکسل (xlsx, xls)</label>
-                        <input type="file" class="form-control" name="excel_file" accept=".xlsx, .xls" required>
+                        <label class="form-label">فایل اکسل (xlsx, xls, csv)</label>
+                        <input type="file" class="form-control" name="excel_file" accept=".xlsx, .xls, .csv" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">اندازه هر بخش پردازش</label>
+                        <input type="number" class="form-control" name="chunk_size" value="300" min="50" max="1000">
+                        <small class="text-muted">برای هاست اشتراکی مقدار ۲۰۰ تا ۳۰۰ پیشنهاد می‌شود.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
