@@ -165,7 +165,7 @@ class SimcardsController extends BaseController
             return null;
         }
 
-        $value = trim(str_replace('T', ' ', $value));
+        $value = $this->normalizePersianDigits(trim(str_replace('T', ' ', $value)));
 
         if (preg_match('/^(1[34]\d{2})[-\/](\d{1,2})[-\/](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2}))?$/', $value, $matches)) {
             $jalaliMonth = (int) $matches[2];
@@ -185,6 +185,16 @@ class SimcardsController extends BaseController
         $timestamp = strtotime($value);
 
         return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
+    }
+
+    private function normalizePersianDigits(string $value): string
+    {
+        return strtr($value, [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
     }
 
     private function formatDiscountSettingsForJalali(array $settings): array

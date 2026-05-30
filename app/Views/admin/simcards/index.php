@@ -276,9 +276,15 @@
 </div>
 
 <script>
+function normalizePersianDigits(value) {
+    return value.replace(/[۰-۹٠-٩]/g, function (digit) {
+        return '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩'.indexOf(digit) % 10;
+    });
+}
+
 document.querySelectorAll('.jalali-datetime-input').forEach(function (input) {
     input.addEventListener('blur', function () {
-        var value = input.value.trim().replace(/-/g, '/');
+        var value = normalizePersianDigits(input.value.trim()).replace(/-/g, '/');
         if (value && !/^1[34]\d{2}\/\d{1,2}\/\d{1,2}(\s+\d{1,2}:\d{1,2})?$/.test(value)) {
             input.setCustomValidity('تاریخ را به شمسی و با قالب YYYY/MM/DD HH:mm وارد کنید.');
         } else {

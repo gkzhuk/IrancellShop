@@ -239,11 +239,12 @@ class InventoryImportService
         }
 
         $discountEnabled = $discountSettings['enable_discounts'] && $discountPercent > 0;
-        $finalPrice = $discountEnabled ? (int) round($price * (100 - $discountPercent) / 100) : $price;
+        $finalPrice = (int) round($price - ($price * $discountPercent / 100));
+        $effectivePrice = $discountEnabled ? $finalPrice : $price;
 
         $data = [
             'number'              => $number,
-            'price'               => $finalPrice,
+            'price'               => $effectivePrice,
             'original_price'      => $price,
             'discount_percent'    => $discountPercent,
             'final_price'         => $finalPrice,
