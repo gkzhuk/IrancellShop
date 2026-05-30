@@ -1,6 +1,19 @@
 <?= $this->extend('front/layout') ?>
 
 <?= $this->section('content') ?>
+<?php
+$finalPriceRial = (int) ($simcard['price'] ?? 0);
+$finalPriceToman = $finalPriceRial / 10;
+$originalPriceRial = $simcard['original_price']
+    ?? $simcard['old_price']
+    ?? $simcard['before_discount_price']
+    ?? null;
+$hasDiscount = is_numeric($originalPriceRial) && (int) $originalPriceRial > $finalPriceRial;
+$discountPercent = $simcard['discount_percent'] ?? $simcard['discount'] ?? null;
+if ($hasDiscount && ! is_numeric($discountPercent)) {
+    $discountPercent = round((((int) $originalPriceRial - $finalPriceRial) / (int) $originalPriceRial) * 100);
+}
+?>
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -61,38 +74,67 @@
 
                 <!-- Price Box -->
                 <div class="price-section">
-                    <div class="price-row">
-                        <span class="label">قیمت سیم‌کارت</span>
-                        <span class="value"><?= number_format($simcard['price'] / 10) ?> تومان</span>
-                    </div>
+                    <?php if ($hasDiscount): ?>
+                        <div class="discount-price-card">
+                            <div class="price-meta-row">
+                                <span class="label">قیمت قبلی سیم‌کارت</span>
+                                <span class="original-price"><?= number_format(((int) $originalPriceRial) / 10) ?> تومان</span>
+                            </div>
+                            <div class="discount-highlight-row">
+                                <span class="discount-badge"><?= number_format((float) $discountPercent) ?>٪ تخفیف</span>
+                                <div class="final-price-block">
+                                    <span class="final-price-label">قیمت نهایی</span>
+                                    <strong class="final-price"><?= number_format($finalPriceToman) ?> تومان</strong>
+                                </div>
+                            </div>
+                            <div class="countdown-box" aria-live="polite">
+                                <span class="countdown-label">زمان باقی‌مانده برای این پیشنهاد</span>
+                                <span class="countdown-time" id="offerCountdown" dir="ltr">24:00:00</span>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="price-row">
+                            <span class="label">قیمت سیم‌کارت</span>
+                            <span class="value"><?= number_format($finalPriceToman) ?> تومان</span>
+                        </div>
+                    <?php endif; ?>
                     <div class="price-row">
                         <span class="label">هزینه ارسال</span>
                         <span class="value">رایگان</span>
                     </div>
                     <div class="divider"></div>
-                    <div class="price-row total">
+                    <div class="price-row total <?= $hasDiscount ? 'discounted-total' : '' ?>">
                         <span class="label">مبلغ قابل پرداخت</span>
-                        <span class="value"><?= number_format($simcard['price'] / 10) ?> تومان</span>
+                        <span class="value"><?= number_format($finalPriceToman) ?> تومان</span>
                     </div>
                 </div>
 
                 <!-- Info Section -->
                 <div class="info-section">
-                    <div class="info-row">
-                        <span class="info-label">نوع سیم‌کارت</span>
-                        <span class="info-value">ایرانسل 0900</span>
+                    <div class="info-section-title">
+                        <span class="info-section-icon">i</span>
+                        <div>
+                            <h3>جزئیات سیم‌کارت</h3>
+                            <p>اطلاعات اصلی شماره انتخاب‌شده</p>
+                        </div>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">نوع شماره</span>
-                        <span class="info-value">دائمی</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">اپراتور</span>
-                        <span class="info-value">ایرانسل</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">زمان تحویل</span>
-                        <span class="info-value">۷-۱۰ روز کاری</span>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">نوع سیم‌کارت</span>
+                            <span class="info-value">ایرانسل 0900</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">نوع شماره</span>
+                            <span class="info-value">دائمی</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">اپراتور</span>
+                            <span class="info-value">ایرانسل</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">زمان تحویل</span>
+                            <span class="info-value">۷-۱۰ روز کاری</span>
+                        </div>
                     </div>
                 </div>
 
@@ -198,28 +240,39 @@
 <style>
 /* Existing Checkout Card Styling */
 .checkout-card {
-    background: white;
-    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid rgba(31, 31, 31, 0.08);
+    border-radius: 22px;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 18px 45px rgba(31, 31, 31, 0.10);
 }
 .checkout-header {
-    background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
-    padding: 30px;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.55), transparent 26%),
+        linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
+    padding: clamp(28px, 6vw, 42px) 24px;
     text-align: center;
     color: #333;
+    border-bottom: 1px solid rgba(31, 31, 31, 0.08);
 }
 .checkout-header h5 {
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 700;
     margin-bottom: 15px;
+    color: rgba(31, 31, 31, 0.78);
 }
 .sim-number {
-    font-size: 32px;
-    font-weight: 700;
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(31, 31, 31, 0.10);
+    border-radius: 18px;
+    padding: 10px 20px;
+    font-size: clamp(26px, 6vw, 38px);
+    font-weight: 800;
     letter-spacing: 2px;
     color: #000;
     margin: 0;
+    box-shadow: 0 10px 24px rgba(31, 31, 31, 0.10);
 }
 
 /* --- LIGHT THEME CSS for Gift Boxes --- */
@@ -283,33 +336,147 @@
 
 /* Original Price Section Styling */
 .price-section {
-    background: #FFFBF0;
-    border: 2px solid #FFD700;
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px;
+    background: linear-gradient(180deg, #fffdf5 0%, #fff9df 100%);
+    border: 1px solid rgba(255, 193, 7, 0.55);
+    border-radius: 18px;
+    padding: 22px;
+    margin: 22px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .price-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
     padding: 12px 0;
     font-size: 15px;
 }
 .price-row .label {
     color: #666;
+    font-weight: 600;
 }
 .price-row .value {
-    font-weight: 600;
+    font-weight: 800;
     color: #333;
+    text-align: left;
 }
 .price-row.total {
     font-size: 18px;
 }
 .price-row.total .label,
 .price-row.total .value {
-    font-weight: 700;
+    font-weight: 800;
     color: #000;
+}
+.price-row.discounted-total .value {
+    color: #198754;
+    font-size: 20px;
+}
+.discount-price-card {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 193, 7, 0.32);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+.price-meta-row,
+.discount-highlight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+}
+.price-meta-row {
+    margin-bottom: 12px;
+}
+.original-price {
+    color: #dc3545;
+    font-weight: 800;
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+}
+.discount-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #1f1f1f;
+    color: #FFD700;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.final-price-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+.final-price-label {
+    color: #5f6b63;
+    font-size: 12px;
+    font-weight: 700;
+}
+.final-price {
+    color: #198754;
+    font-size: clamp(24px, 6vw, 31px);
+    line-height: 1.4;
+}
+.countdown-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(25, 135, 84, 0.08);
+    border: 1px dashed rgba(25, 135, 84, 0.35);
+}
+.countdown-label {
+    color: #355143;
+    font-size: 13px;
+    font-weight: 700;
+}
+.countdown-time {
+    color: #198754;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+.info-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.info-section-title h3 {
+    margin: 0;
+    color: #1f1f1f;
+    font-size: 18px;
+    font-weight: 800;
+}
+.info-section-title p {
+    margin: 3px 0 0;
+    color: #777;
+    font-size: 12px;
+}
+.info-section-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: rgba(255, 215, 0, 0.22);
+    color: #9a7300;
+    font-weight: 900;
+}
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
 }
 .divider {
     height: 1px;
@@ -317,26 +484,31 @@
     margin: 10px 0;
 }
 .info-section {
-    padding: 20px 30px;
+    padding: 6px 22px 20px;
 }
 .info-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #f0f0f0;
+    gap: 12px;
+    padding: 15px;
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
+    background: #fff;
 }
 .info-row:last-child {
-    border-bottom: none;
+    border-bottom: 1px solid #f0f0f0;
 }
 .info-label {
     color: #666;
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 600;
 }
 .info-value {
-    color: #333;
-    font-weight: 600;
+    color: #222;
+    font-weight: 800;
     font-size: 14px;
+    text-align: left;
 }
 .btn-purchase {
     background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
@@ -364,9 +536,21 @@
         margin: 15px;
         padding: 15px;
     }
-    
+    .price-meta-row,
+    .discount-highlight-row,
+    .countdown-box {
+        align-items: stretch;
+        flex-direction: column;
+        text-align: center;
+    }
+    .final-price-block {
+        align-items: center;
+    }
     .info-section {
-        padding: 15px 20px;
+        padding: 15px;
+    }
+    .info-grid {
+        grid-template-columns: 1fr;
     }
 
     /* Mobile adjustments for the gift boxes */
@@ -394,5 +578,33 @@
     }
 }
 </style>
+
+<?php if ($hasDiscount): ?>
+<script>
+(function () {
+    var countdown = document.getElementById('offerCountdown');
+    if (!countdown) {
+        return;
+    }
+
+    var remainingSeconds = 24 * 60 * 60;
+    var pad = function (value) {
+        return String(value).padStart(2, '0');
+    };
+    var render = function () {
+        var hours = Math.floor(remainingSeconds / 3600);
+        var minutes = Math.floor((remainingSeconds % 3600) / 60);
+        var seconds = remainingSeconds % 60;
+        countdown.textContent = pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
+        if (remainingSeconds > 0) {
+            remainingSeconds -= 1;
+        }
+    };
+
+    render();
+    window.setInterval(render, 1000);
+})();
+</script>
+<?php endif; ?>
 
 <?= $this->endSection() ?>
