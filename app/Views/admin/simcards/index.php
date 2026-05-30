@@ -3,10 +3,10 @@
 <?= $this->section('content') ?>
 <?php
     $importStatusLabels = [
-        'pending' => 'در انتظار',
+        'pending' => 'در انتظار پردازش',
         'processing' => 'در حال پردازش',
-        'completed' => 'تکمیل شده',
-        'done' => 'تکمیل شده',
+        'completed' => 'با موفقیت انجام شد',
+        'done' => 'با موفقیت انجام شد',
         'failed' => 'ناموفق',
     ];
 ?>
@@ -75,47 +75,70 @@
 <?php if(!empty($importJobs)): ?>
 <div class="card mb-4">
     <div class="card-header">آخرین Jobهای ایمپورت</div>
-    <div class="card-body table-responsive">
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>فایل</th>
-                    <th>وضعیت</th>
-                    <th>پردازش‌شده</th>
-                    <th>درج</th>
-                    <th>بروزرسانی</th>
-                    <th>خطا</th>
-                    <th>عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach($importJobs as $job): ?>
-                <tr>
-                    <td><?= $job['id'] ?></td>
-                    <td><?= esc($job['original_filename'] ?? basename($job['file_path'])) ?></td>
-                    <td><?= esc($importStatusLabels[$job['status']] ?? $job['status']) ?></td>
-                    <td><?= number_format((int) $job['processed_rows']) ?> / <?= number_format((int) $job['total_rows']) ?></td>
-                    <td><?= number_format((int) $job['inserted_rows']) ?></td>
-                    <td><?= number_format((int) $job['updated_rows']) ?></td>
-                    <td><?= number_format((int) $job['failed_rows']) ?></td>
-                    <td>
-                        <?php if(in_array($job['status'], ['pending', 'processing'], true)): ?>
-                        <form action="<?= base_url('admin/simcards/imports/' . $job['id'] . '/process') ?>" method="post" class="d-inline">
-                            <?= csrf_field() ?>
-                            <button type="submit" class="btn btn-sm btn-outline-primary">ادامه خودکار پردازش</button>
-                        </form>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php if(!empty($job['error_log'])): ?>
-                <tr>
-                    <td colspan="8"><small class="text-danger"><pre class="mb-0" style="white-space: pre-wrap; direction:ltr; text-align:left;"><?= esc($job['error_log']) ?></pre></small></td>
-                </tr>
-                <?php endif; ?>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+    <div class="card-body">
+        <div class="accordion" id="importJobsAccordion">
+            <?php foreach($importJobs as $job): ?>
+                <?php
+                    $jobStatus = $job['status'] ?? 'pending';
+                    $jobTitle = $job['original_filename'] ?? basename($job['file_path'] ?? '');
+                    $jobTitle = $jobTitle !== '' ? $jobTitle : ('Job #' . ($job['id'] ?? ''));
+                    $collapseId = 'importJobCollapse' . (int) $job['id'];
+                    $headingId = 'importJobHeading' . (int) $job['id'];
+                ?>
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="<?= esc($headingId, 'attr') ?>">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#<?= esc($collapseId, 'attr') ?>" aria-expanded="false" aria-controls="<?= esc($collapseId, 'attr') ?>">
+                            <div class="d-flex flex-column flex-md-row gap-2 gap-md-4 w-100 align-items-md-center">
+                                <span class="fw-bold"><?= esc($jobTitle) ?></span>
+                                <span class="badge bg-secondary align-self-start"><?= esc($importStatusLabels[$jobStatus] ?? $jobStatus) ?></span>
+                                <small class="text-muted">تاریخ ایجاد: <?= esc($job['created_at'] ?? '-') ?></small>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="<?= esc($collapseId, 'attr') ?>" class="accordion-collapse collapse" aria-labelledby="<?= esc($headingId, 'attr') ?>" data-bs-parent="#importJobsAccordion">
+                        <div class="accordion-body">
+                            <?php if(in_array($jobStatus, ['completed', 'done'], true)): ?>
+                                <p class="text-success fw-bold mb-3">این ایمپورت با موفقیت انجام شد</p>
+                                <div class="row g-2 text-center">
+                                    <div class="col-6 col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">کل ردیف‌ها</small><strong><?= number_format((int) ($job['total_rows'] ?? 0)) ?></strong></div></div>
+                                    <div class="col-6 col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">درج‌شده</small><strong><?= number_format((int) ($job['inserted_rows'] ?? 0)) ?></strong></div></div>
+                                    <div class="col-6 col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">به‌روزرسانی‌شده</small><strong><?= number_format((int) ($job['updated_rows'] ?? 0)) ?></strong></div></div>
+                                    <div class="col-6 col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">خطادار</small><strong><?= number_format((int) ($job['failed_rows'] ?? 0)) ?></strong></div></div>
+                                </div>
+                            <?php elseif($jobStatus === 'failed'): ?>
+                                <p class="text-danger fw-bold mb-3">این ایمپورت با خطا مواجه شد</p>
+                                <?php if(!empty($job['error_log'])): ?>
+                                    <div class="alert alert-danger mb-0">
+                                        <div class="fw-bold mb-2">جزئیات خطا برای بررسی مدیر:</div>
+                                        <pre class="mb-0" style="white-space: pre-wrap;"><?= esc($job['error_log']) ?></pre>
+                                    </div>
+                                <?php endif; ?>
+                            <?php elseif($jobStatus === 'processing'): ?>
+                                <p class="fw-bold mb-2">در حال پردازش فایل</p>
+                                <div class="progress mb-2" style="height: 24px;">
+                                    <?php
+                                        $totalRows = (int) ($job['total_rows'] ?? 0);
+                                        $processedRows = (int) ($job['processed_rows'] ?? 0);
+                                        $progressPercent = $totalRows > 0 ? min(100, (int) floor(($processedRows / $totalRows) * 100)) : 0;
+                                    ?>
+                                    <div class="progress-bar" role="progressbar" style="width: <?= $progressPercent ?>%;" aria-valuenow="<?= $progressPercent ?>" aria-valuemin="0" aria-valuemax="100"><?= $progressPercent ?>%</div>
+                                </div>
+                                <small class="text-muted"><?= number_format($processedRows) ?> / <?= number_format($totalRows) ?> ردیف پردازش شده است.</small>
+                            <?php else: ?>
+                                <p class="text-muted fw-bold mb-0">در انتظار پردازش</p>
+                            <?php endif; ?>
+
+                            <?php if(in_array($jobStatus, ['pending', 'processing'], true)): ?>
+                                <form action="<?= base_url('admin/simcards/imports/' . $job['id'] . '/process') ?>" method="post" class="mt-3">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">ادامه خودکار پردازش</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 </div>
 <?php endif; ?>

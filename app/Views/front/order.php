@@ -1,6 +1,15 @@
 <?= $this->extend('front/layout') ?>
 
 <?= $this->section('content') ?>
+<?php
+    $displayPrice = (float) ($simcard['price'] ?? 0);
+    $originalPrice = (float) ($simcard['original_price'] ?? $displayPrice);
+    $finalPrice = (float) ($simcard['final_price'] ?? $displayPrice);
+    $discountPercent = (float) ($simcard['discount_percent'] ?? 0);
+    $discountEnabled = !empty($simcard['discount_enabled']);
+    $hasDiscount = $discountEnabled && $discountPercent > 0;
+    $payablePrice = $hasDiscount ? $finalPrice : $displayPrice;
+?>
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -61,9 +70,17 @@
 
                 <!-- Price Box -->
                 <div class="price-section">
-                    <div class="price-row">
+                    <div class="price-row align-items-start">
                         <span class="label">قیمت سیم‌کارت</span>
-                        <span class="value"><?= number_format($simcard['price'] / 10) ?> تومان</span>
+                        <span class="value text-end">
+                            <?php if($hasDiscount): ?>
+                                <span class="original-price d-block"><?= number_format($originalPrice / 10) ?> تومان</span>
+                                <span class="discounted-price d-block"><?= number_format($payablePrice / 10) ?> تومان</span>
+                                <span class="discount-badge d-inline-block mt-1">🔻 <?= rtrim(rtrim(number_format($discountPercent, 2), '0'), '.') ?>٪ تخفیف</span>
+                            <?php else: ?>
+                                <?= number_format($payablePrice / 10) ?> تومان
+                            <?php endif; ?>
+                        </span>
                     </div>
                     <div class="price-row">
                         <span class="label">هزینه ارسال</span>
@@ -72,7 +89,7 @@
                     <div class="divider"></div>
                     <div class="price-row total">
                         <span class="label">مبلغ قابل پرداخت</span>
-                        <span class="value"><?= number_format($simcard['price'] / 10) ?> تومان</span>
+                        <span class="value"><?= number_format($payablePrice / 10) ?> تومان</span>
                     </div>
                 </div>
 
@@ -314,6 +331,25 @@
 .price-row.total .value {
     font-weight: 700;
     color: #000;
+}
+.original-price {
+    color: #888;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: line-through;
+}
+.discounted-price {
+    color: #d32f2f;
+    font-size: 18px;
+    font-weight: 800;
+}
+.discount-badge {
+    background: #ffe8e8;
+    color: #c62828;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
 }
 .divider {
     height: 1px;
