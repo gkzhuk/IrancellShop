@@ -12,7 +12,18 @@ class SimcardModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['number', 'price', 'status', 'added_by'];
+    protected $allowedFields    = [
+        'number',
+        'price',
+        'original_price',
+        'discount_percent',
+        'final_price',
+        'discount_starts_at',
+        'discount_ends_at',
+        'discount_enabled',
+        'status',
+        'added_by',
+    ];
 
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
@@ -22,6 +33,7 @@ class SimcardModel extends Model
     protected $validationRules      = [
         'number' => 'required|exact_length[11]|is_unique[simcards.number,id,{id}]',
         'price'  => 'required|numeric',
+        'discount_percent' => 'permit_empty|decimal',
         'status' => 'required|in_list[free,sold]',
     ];
     protected $validationMessages   = [];

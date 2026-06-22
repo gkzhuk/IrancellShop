@@ -16,6 +16,8 @@ class OrderModel extends Model
         'tracking_code',
         'simcard_id',
         'buyer_name',
+        'buyer_last_name',
+        'buyer_first_name',
         'buyer_national_code',
         'buyer_phone',
         'buyer_father_name',
@@ -26,6 +28,16 @@ class OrderModel extends Model
         'ref_id',
         'payment_message',
         'payment_verified_at',
+        'secure_token',
+        'admin_status',
+        'order_status',
+        'address',
+        'postal_code',
+        'national_id_document_path',
+        'national_card_image',
+        'selfie_document_path',
+        'selfie_image',
+        'documents_uploaded_at',
     ];
 
     protected $useTimestamps = true;
@@ -61,6 +73,27 @@ class OrderModel extends Model
             self::STATUS_SUCCESS           => 'موفق',
             self::STATUS_VERIFY_FAILED     => 'ناموفق در تأیید پرداخت',
             self::STATUS_FAILED            => 'ناموفق قطعی',
+        ];
+    }
+
+    public const ADMIN_STATUS_DOCUMENTS_PENDING = 'documents_pending';
+    public const ADMIN_STATUS_DOCUMENTS_UPLOADED = 'documents_uploaded';
+    public const ADMIN_STATUS_UNDER_REVIEW = 'under_review';
+    public const ADMIN_STATUS_APPROVED = 'approved';
+    public const ADMIN_STATUS_REJECTED = 'rejected';
+    public const ADMIN_STATUS_COMPLETED = 'completed';
+    public const ADMIN_STATUS_CANCELLED = 'cancelled';
+
+    public static function adminStatuses(): array
+    {
+        return [
+            self::ADMIN_STATUS_DOCUMENTS_PENDING => 'در انتظار تکمیل مدارک',
+            self::ADMIN_STATUS_DOCUMENTS_UPLOADED => 'مدارک بارگذاری شد',
+            self::ADMIN_STATUS_UNDER_REVIEW => 'در حال بررسی',
+            self::ADMIN_STATUS_APPROVED => 'تأیید شده',
+            self::ADMIN_STATUS_REJECTED => 'رد شده',
+            self::ADMIN_STATUS_COMPLETED => 'تکمیل شده',
+            self::ADMIN_STATUS_CANCELLED => 'لغو شده',
         ];
     }
 

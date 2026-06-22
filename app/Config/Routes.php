@@ -35,9 +35,15 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], function($rout
         $routes->post('simcards/update/(:num)', 'SimcardsController::update/$1');
         $routes->get('simcards/delete/(:num)', 'SimcardsController::delete/$1');
         $routes->post('simcards/import', 'SimcardsController::import');
+        $routes->match(['get', 'post'], 'simcards/imports/(:num)/process', 'SimcardsController::processImport/$1');
+        $routes->post('simcards/discount-settings', 'SimcardsController::discountSettings');
         
-        // Orders Management
+        // Payment Management
         $routes->get('orders', 'OrdersController::index');
+        $routes->get('successful-orders', 'SuccessfulOrdersController::index');
+        $routes->get('successful-orders/(:num)', 'SuccessfulOrdersController::show/$1');
+        $routes->post('successful-orders/(:num)/status', 'SuccessfulOrdersController::updateStatus/$1');
+        $routes->get('successful-orders/(:num)/document/(:alpha)', 'SuccessfulOrdersController::document/$1/$2');
         
         
           $routes->get('ip-whitelist',            'IpWhitelistController::index');
@@ -51,3 +57,6 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin'], function($rout
 $routes->group('api', ['namespace' => 'App\Controllers\Api'], function ($routes) {
     $routes->post('simcards/import', 'SimcardsController::import');
 });
+
+$routes->get('order/complete/(:segment)', 'OrderCompletionController::show/$1');
+$routes->post('order/complete/(:segment)', 'OrderCompletionController::submit/$1');

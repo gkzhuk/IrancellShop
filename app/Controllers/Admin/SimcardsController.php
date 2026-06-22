@@ -3,8 +3,10 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\ExcelImportJobModel;
+use App\Models\InventorySettingModel;
 use App\Models\SimcardModel;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Services\InventoryImportService;
 
 class SimcardsController extends BaseController
 {
@@ -23,11 +25,19 @@ class SimcardsController extends BaseController
             $model->like('number', $search);
         }
 
+        $jobModel = new ExcelImportJobModel();
+        $settingModel = new InventorySettingModel();
+
+        $discountSettings = $settingModel->getDiscountSettings();
+
         $data = [
-            'simcards' => $model->paginate(20),
-            'pager'    => $model->pager,
-            'status'   => $status,
-            'search'   => $search
+            'simcards'               => $model->paginate(20),
+            'pager'                  => $model->pager,
+            'status'                 => $status,
+            'search'                 => $search,
+            'importJobs'             => $jobModel->orderBy('id', 'DESC')->findAll(10),
+            'discountSettings'       => $discountSettings,
+            'discountSettingsJalali' => $this->formatDiscountSettingsForJalali($discountSettings),
         ];
 
         return view('admin/simcards/index', $data);
@@ -81,82 +91,204 @@ class SimcardsController extends BaseController
     {
         $file = $this->request->getFile('excel_file');
 
-        if (!$file->isValid()) {
+        if (!$file || !$file->isValid()) {
             return redirect()->back()->with('error', 'فایل نامعتبر است.');
         }
 
-        try {
-            $spreadsheet = IOFactory::load($file->getTempName());
-            $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray();
-
-            $model = new SimcardModel();
-            $successCount = 0;
-            $errorCount = 0;
-            $errors = [];
-
-            foreach ($rows as $index => $row) {
-                // Skip header or empty rows if necessary, checking if first col looks like number
-                if (empty($row[0])) continue;
-
-                $number = trim((string)$row[0]);
-                $price = isset($row[1]) ? (int)str_replace(',', '', (string)$row[1]) : 0;
-
-                // Normalize number
-                // If 10 digits and starts with 9, prepend 0
-                if (preg_match('/^9\d{9}$/', $number)) {
-                    $number = '0' . $number;
-                }
-
-                // Validate number format: 11 digits starting with 09
-                if (!preg_match('/^09\d{9}$/', $number)) {
-                    $errorCount++;
-                    $errors[] = "سطر " . ($index + 1) . ": شماره نامعتبر ($number)";
-                    continue;
-                }
-
-                // Check duplicate
-                if ($model->where('number', $number)->countAllResults() > 0) {
-                    $errorCount++;
-                    $errors[] = "سطر " . ($index + 1) . ": شماره تکراری ($number)";
-                    continue;
-                }
-
-                // Insert
-                try {
-                    $result = $model->insert([
-                        'number' => $number,
-                        'price'  => $price,
-                        'status' => 'free',
-                    ]);
-                    
-                    if ($result === false) {
-                        $errorCount++;
-                        $errors[] = "سطر " . ($index + 1) . ": خطا در اعتبارسنجی ($number)";
-                    } else {
-                        $successCount++;
-                    }
-                } catch (\Exception $e) {
-                    $errorCount++;
-                    $errors[] = "سطر " . ($index + 1) . ": خطا در ثبت ($number)";
-                }
-            }
-
-            $report = "<h5>نتایج ایمپورت:</h5>";
-            $report .= "<p class='text-success'>تعداد موفق: $successCount</p>";
-            $report .= "<p class='text-danger'>تعداد خطا: $errorCount</p>";
-            if (!empty($errors)) {
-                $report .= "<ul>";
-                foreach ($errors as $err) {
-                    $report .= "<li>$err</li>";
-                }
-                $report .= "</ul>";
-            }
-
-            return redirect()->to('/admin/simcards')->with('import_report', $report);
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'خطا در پردازش فایل اکسل: ' . $e->getMessage());
+        $extension = strtolower($file->getClientExtension());
+        if (!in_array($extension, ['xlsx', 'xls', 'csv'], true)) {
+            return redirect()->back()->with('error', 'فقط فایل‌های xlsx، xls یا csv قابل قبول هستند.');
         }
+
+        $uploadDir = WRITEPATH . 'uploads/imports';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $storedName = $file->getRandomName();
+        $file->move($uploadDir, $storedName);
+
+        $jobModel = new ExcelImportJobModel();
+        $jobId = $jobModel->insert([
+            'file_path'         => $uploadDir . DIRECTORY_SEPARATOR . $storedName,
+            'original_filename' => $file->getClientName(),
+            'status'            => 'pending',
+            'current_row'       => 2,
+            'chunk_size'        => 300,
+        ]);
+
+        log_message('info', 'Inventory import job created: ' . $jobId);
+
+        return redirect()->to('/admin/simcards/imports/' . $jobId . '/process');
     }
+
+    public function processImport($id)
+    {
+        $service = new InventoryImportService();
+        $result = $service->processJobUntilPaused((int) $id, 20);
+        $status = $result['status'] ?? 'processing';
+
+        if (!empty($result['paused']) && in_array($status, ['pending', 'processing'], true)) {
+            $continueUrl = base_url('admin/simcards/imports/' . (int) $id . '/process');
+
+            return $this->response->setBody(view('admin/simcards/import_processing', [
+                'continueUrl' => $continueUrl,
+                'result'      => $result,
+            ]));
+        }
+
+        $message = $status === 'completed'
+            ? 'ایمپورت فایل اکسل با موفقیت تکمیل شد.'
+            : 'پردازش ایمپورت متوقف شد. وضعیت: ' . $this->importStatusLabel($status);
+
+        return redirect()->to('/admin/simcards')->with($status === 'failed' ? 'error' : 'success', $message);
+    }
+
+    public function discountSettings()
+    {
+        $settingModel = new InventorySettingModel();
+
+        $enableDiscounts = $this->request->getPost('enable_discounts') === '1' ? '1' : '0';
+        $globalStart = $this->normalizeDateTimeInput($this->request->getPost('global_discount_start'));
+        $globalEnd = $this->normalizeDateTimeInput($this->request->getPost('global_discount_end'));
+
+        $settingModel->setValue('enable_discounts', $enableDiscounts);
+        $settingModel->setValue('global_discount_start', $globalStart);
+        $settingModel->setValue('global_discount_end', $globalEnd);
+
+        return redirect()->to('/admin/simcards')->with('success', 'تنظیمات تخفیف ذخیره شد.');
+    }
+
+    private function normalizeDateTimeInput(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $value = $this->normalizePersianDigits(trim(str_replace('T', ' ', $value)));
+
+        if (preg_match('/^(1[34]\d{2})[-\/](\d{1,2})[-\/](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2}))?$/', $value, $matches)) {
+            $jalaliMonth = (int) $matches[2];
+            $jalaliDay = (int) $matches[3];
+            $hour = isset($matches[4]) ? (int) $matches[4] : 0;
+            $minute = isset($matches[5]) ? (int) $matches[5] : 0;
+
+            if ($jalaliMonth < 1 || $jalaliMonth > 12 || $jalaliDay < 1 || $jalaliDay > 31 || $hour > 23 || $minute > 59) {
+                return null;
+            }
+
+            [$gy, $gm, $gd] = $this->jalaliToGregorian((int) $matches[1], $jalaliMonth, $jalaliDay);
+
+            return sprintf('%04d-%02d-%02d %02d:%02d:00', $gy, $gm, $gd, $hour, $minute);
+        }
+
+        $timestamp = strtotime($value);
+
+        return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
+    }
+
+    private function normalizePersianDigits(string $value): string
+    {
+        return strtr($value, [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
+    }
+
+    private function formatDiscountSettingsForJalali(array $settings): array
+    {
+        return [
+            'global_discount_start' => $this->formatDateTimeForJalaliInput($settings['global_discount_start'] ?? null),
+            'global_discount_end'   => $this->formatDateTimeForJalaliInput($settings['global_discount_end'] ?? null),
+        ];
+    }
+
+    private function formatDateTimeForJalaliInput(?string $value): string
+    {
+        if (!$value) {
+            return '';
+        }
+
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return '';
+        }
+
+        [$jy, $jm, $jd] = $this->gregorianToJalali((int) date('Y', $timestamp), (int) date('n', $timestamp), (int) date('j', $timestamp));
+
+        return sprintf('%04d/%02d/%02d %s', $jy, $jm, $jd, date('H:i', $timestamp));
+    }
+
+    private function importStatusLabel(string $status): string
+    {
+        return [
+            'pending'    => 'در انتظار',
+            'processing' => 'در حال پردازش',
+            'completed'  => 'تکمیل شده',
+            'done'       => 'تکمیل شده',
+            'failed'     => 'ناموفق',
+        ][$status] ?? $status;
+    }
+
+    private function jalaliToGregorian(int $jy, int $jm, int $jd): array
+    {
+        $jy += 1595;
+        $days = -355668 + (365 * $jy) + intdiv($jy, 33) * 8 + intdiv(($jy % 33) + 3, 4) + $jd;
+        $days += ($jm < 7) ? (($jm - 1) * 31) : ((($jm - 7) * 30) + 186);
+        $gy = 400 * intdiv($days, 146097);
+        $days %= 146097;
+
+        if ($days > 36524) {
+            $gy += 100 * intdiv(--$days, 36524);
+            $days %= 36524;
+            if ($days >= 365) {
+                $days++;
+            }
+        }
+
+        $gy += 4 * intdiv($days, 1461);
+        $days %= 1461;
+
+        if ($days > 365) {
+            $gy += intdiv($days - 1, 365);
+            $days = ($days - 1) % 365;
+        }
+
+        $gd = $days + 1;
+        $months = [0, 31, (($gy % 4 === 0 && $gy % 100 !== 0) || ($gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        for ($gm = 1; $gm <= 12 && $gd > $months[$gm]; $gm++) {
+            $gd -= $months[$gm];
+        }
+
+        return [$gy, $gm, $gd];
+    }
+
+    private function gregorianToJalali(int $gy, int $gm, int $gd): array
+    {
+        $days = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+        $gy2 = ($gm > 2) ? ($gy + 1) : $gy;
+        $totalDays = 355666 + (365 * $gy) + intdiv($gy2 + 3, 4) - intdiv($gy2 + 99, 100) + intdiv($gy2 + 399, 400) + $gd + $days[$gm - 1];
+        $jy = -1595 + (33 * intdiv($totalDays, 12053));
+        $totalDays %= 12053;
+        $jy += 4 * intdiv($totalDays, 1461);
+        $totalDays %= 1461;
+
+        if ($totalDays > 365) {
+            $jy += intdiv($totalDays - 1, 365);
+            $totalDays = ($totalDays - 1) % 365;
+        }
+
+        if ($totalDays < 186) {
+            $jm = 1 + intdiv($totalDays, 31);
+            $jd = 1 + ($totalDays % 31);
+        } else {
+            $jm = 7 + intdiv($totalDays - 186, 30);
+            $jd = 1 + (($totalDays - 186) % 30);
+        }
+
+        return [$jy, $jm, $jd];
+    }
+
 }

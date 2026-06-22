@@ -13,10 +13,9 @@
                 <h1 class="display-4 fw-bold text-dark"><?= $order['tracking_code'] ?></h1>
             </div>
             
-            <p class="text-muted mt-3">کارشناسان ما طی ۲۴ تا ۷۲ ساعت آینده با شما تماس خواهند گرفت.</p>
+            <p class="text-muted mt-3">برای تکمیل سفارش، لطفاً مدارک خود را تکمیل کنید.</p>
             <p class="small text-muted">شماره تراکنش: <?= $ref_id ?></p>
-            
-            <a href="<?= base_url() ?>" class="btn btn-primary mt-4">بازگشت به صفحه اصلی</a>
+            <a href="<?= esc($completeOrderUrl) ?>" class="btn btn-primary mt-4">تکمیل اطلاعات و بارگذاری مدارک</a>
         </div>
     </div>
 </div>

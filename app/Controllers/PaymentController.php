@@ -5,9 +5,12 @@ namespace App\Controllers;
 use App\Libraries\ZarinpalGateway;
 use App\Models\OrderModel;
 use App\Models\SimcardModel;
+use App\Services\SmsService;
 
 class PaymentController extends BaseController
 {
+    private ?array $ordersTableColumns = null;
+
     public function start()
     {
         $simcardId = $this->request->getPost('simcard_id');
@@ -18,8 +21,9 @@ class PaymentController extends BaseController
             return redirect()->to('/')->with('error', 'سیم‌کارت نامعتبر یا فروخته شده است.');
         }
 
-        if (!$this->validate([
-            'buyer_name'          => 'required',
+        $nameRules = [
+            'buyer_first_name'    => 'required',
+            'buyer_last_name'     => 'required',
             'buyer_national_code' => 'required|exact_length[10]',
             'buyer_phone'         => 'required|exact_length[11]',
             'father_name'         => 'required',
@@ -27,7 +31,9 @@ class PaymentController extends BaseController
             'birth_month'         => 'required',
             'birth_day'           => 'required',
             'rules'               => 'required',
-        ])) {
+        ];
+
+        if (!$this->validate($nameRules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
@@ -40,10 +46,18 @@ class PaymentController extends BaseController
 
         $orderModel = new OrderModel();
 
-        $orderId = $orderModel->insert([
+        $firstName = trim((string) $this->request->getPost('buyer_first_name'));
+        $lastName = trim((string) $this->request->getPost('buyer_last_name'));
+        $legacyName = trim((string) $this->request->getPost('buyer_name'));
+        $fullName = trim($firstName . ' ' . $lastName);
+        if ($fullName === '') {
+            $fullName = $legacyName;
+        }
+
+        $insertData = [
             'tracking_code'       => $trackingCode,
             'simcard_id'          => $simcardId,
-            'buyer_name'          => $this->request->getPost('buyer_name'),
+            'buyer_name'          => $fullName,
             'buyer_national_code' => $this->request->getPost('buyer_national_code'),
             'buyer_phone'         => $this->request->getPost('buyer_phone'),
             'buyer_father_name'   => $this->request->getPost('father_name'),
@@ -51,7 +65,27 @@ class PaymentController extends BaseController
             'amount'              => $amountRial,
             'payment_status'      => OrderModel::STATUS_PENDING,
             'payment_message'     => 'Order created. Waiting for gateway request.',
-        ], true);
+        ];
+
+
+        if ($this->ordersColumnExists('buyer_first_name')) {
+            $insertData['buyer_first_name'] = $firstName;
+        }
+        if ($this->ordersColumnExists('buyer_last_name')) {
+            $insertData['buyer_last_name'] = $lastName;
+        }
+
+        if ($this->ordersColumnExists('secure_token')) {
+            $insertData['secure_token'] = bin2hex(random_bytes(32));
+        }
+        if ($this->ordersColumnExists('order_status')) {
+            $insertData['order_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+        }
+        if ($this->ordersColumnExists('admin_status')) {
+            $insertData['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+        }
+
+        $orderId = $orderModel->insert($insertData, true);
 
         $zarinpal = new ZarinpalGateway();
         $description = 'خرید سیم‌کارت ' . $simcard['number'];
@@ -94,10 +128,11 @@ class PaymentController extends BaseController
 
         // Idempotency guard: never downgrade a successful payment.
         if ($order['payment_status'] === OrderModel::STATUS_SUCCESS) {
-            return view('front/success', [
-                'order'  => $order,
-                'ref_id' => $order['ref_id'],
-            ]);
+            $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
+
+            $smsOrder = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
+            $this->sendSmsSafe((string) ($smsOrder['buyer_phone'] ?? ''), 'order_payment_success', $this->smsPaymentSuccessParams($smsOrder), (int) $smsOrder['id']);
+            return view('front/success', $this->buildSuccessViewData($orderModel, $order, (string) ($order['ref_id'] ?? '')));
         }
 
         // User canceled, left gateway, or payment was not completed.
@@ -128,12 +163,29 @@ class PaymentController extends BaseController
             $freshOrder = $orderModel->where('id', $order['id'])->first();
 
             if ($freshOrder && $freshOrder['payment_status'] !== OrderModel::STATUS_SUCCESS) {
-                $orderModel->update($order['id'], [
+                $successUpdate = [
                     'payment_status'      => OrderModel::STATUS_SUCCESS,
                     'ref_id'              => $verification['ref_id'],
                     'payment_message'     => 'Payment verified successfully. Verify type: ' . ($verification['type'] ?? 'verified'),
                     'payment_verified_at' => date('Y-m-d H:i:s'),
-                ]);
+                ];
+                if ($this->ordersColumnExists('order_status')) {
+                    $successUpdate['order_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+                }
+                if ($this->ordersColumnExists('admin_status')) {
+                    $successUpdate['admin_status'] = OrderModel::ADMIN_STATUS_DOCUMENTS_PENDING;
+                }
+                if ($this->ordersColumnExists('secure_token') && empty($freshOrder['secure_token'])) {
+                    $successUpdate['secure_token'] = bin2hex(random_bytes(32));
+                }
+
+                $orderModel->update($order['id'], $successUpdate);
+
+                if (isset($successUpdate['secure_token'])) {
+                    $order['secure_token'] = $successUpdate['secure_token'];
+                } elseif (!empty($freshOrder['secure_token'])) {
+                    $order['secure_token'] = $freshOrder['secure_token'];
+                }
 
                 $simcardModel = new SimcardModel();
                 $simcardModel->update($order['simcard_id'], ['status' => 'sold']);
@@ -143,11 +195,11 @@ class PaymentController extends BaseController
 
             $order['payment_status'] = OrderModel::STATUS_SUCCESS;
             $order['ref_id'] = $verification['ref_id'];
+            $order = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
 
-            return view('front/success', [
-                'order'  => $order,
-                'ref_id' => $verification['ref_id'],
-            ]);
+            $smsOrder = $this->ensureOrderHasSecureToken($orderModel, (int) $order['id']) ?? $order;
+            $this->sendSmsSafe((string) ($smsOrder['buyer_phone'] ?? ''), 'order_payment_success', $this->smsPaymentSuccessParams($smsOrder), (int) $smsOrder['id']);
+            return view('front/success', $this->buildSuccessViewData($orderModel, $order, (string) $verification['ref_id']));
         }
 
         // Technical errors must not become definitive failed payments.
@@ -170,6 +222,79 @@ class PaymentController extends BaseController
         return view('front/failed', ['message' => 'پرداخت توسط درگاه تأیید نشد.']);
     }
 
+
+    private function buildSuccessViewData(OrderModel $orderModel, array $order, string $refId): array
+    {
+        $orderId = (int) ($order['id'] ?? 0);
+        $this->ensureSecureTokenSchema();
+        $resolvedOrder = $this->ensureOrderHasSecureToken($orderModel, $orderId) ?? $order;
+        $secureToken = (string) ($resolvedOrder['secure_token'] ?? '');
+
+        if ($secureToken === '' && $orderId > 0) {
+            if ($this->ordersColumnExists('secure_token')) {
+                $secureToken = bin2hex(random_bytes(32));
+                log_message('warning', 'Generated fallback secure_token in callback for order id {id}', ['id' => $orderId]);
+                $updated = (bool) \Config\Database::connect()
+                    ->table('orders')
+                    ->where('id', $orderId)
+                    ->update(['secure_token' => $secureToken]);
+
+                log_message('debug', 'Fallback secure_token DB update result for order id {id}: {result}', [
+                    'id' => $orderId,
+                    'result' => $updated ? 'updated' : 'not_updated',
+                ]);
+
+                $reloaded = $orderModel->find($orderId);
+                if (!empty($reloaded['secure_token'])) {
+                    $resolvedOrder = $reloaded;
+                    $secureToken = (string) $reloaded['secure_token'];
+                } else {
+                    log_message('error', 'Fallback secure_token persistence failed for order id {id}', ['id' => $orderId]);
+                }
+            } else {
+                log_message('warning', 'secure_token column missing while payment success rendered for order id {id}', ['id' => $orderId]);
+                $secureToken = '';
+            }
+        }
+
+        log_message('debug', 'Success view payload for order id {id} has token: {has_token}', [
+            'id' => $orderId,
+            'has_token' => $secureToken !== '' ? 'yes' : 'no',
+        ]);
+
+        return [
+            'order'            => $resolvedOrder,
+            'ref_id'           => $refId,
+            'completeOrderUrl' => base_url('order/complete/' . $secureToken),
+        ];
+    }
+
+
+    private function sendSmsSafe(string $mobile, string $patternCode, array $params, int $orderId): void
+    {
+        try {
+            (new SmsService())->sendPattern($mobile, $patternCode, $params, $orderId);
+        } catch (\Throwable $e) {
+            log_message('error', 'SMS safe-send failed: {msg}', ['msg' => $e->getMessage()]);
+        }
+    }
+
+    private function buildSecureLink(array $order): string
+    {
+        return base_url('order/complete/' . (string) ($order['secure_token'] ?? ''));
+    }
+
+    private function smsPaymentSuccessParams(array $order): array
+    {
+        $sim = (new SimcardModel())->find($order['simcard_id']);
+        return [
+            'sim_number' => (string) ($sim['number'] ?? '-'),
+            'national_code' => (string) ($order['buyer_national_code'] ?? '-'),
+            'secure_link' => $this->buildSecureLink($order),
+            'mobile' => (string) ($order['buyer_phone'] ?? ''),
+        ];
+    }
+
     private function updateOrderIfNotSuccess(OrderModel $orderModel, int $orderId, array $data): bool
     {
         return (bool) $orderModel
@@ -187,5 +312,85 @@ class PaymentController extends BaseController
         } while ($exists > 0);
 
         return $code;
+    }
+
+
+    private function ensureSecureTokenSchema(): void
+    {
+        if ($this->ordersColumnExists('secure_token')) {
+            return;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $forge = \Config\Database::forge();
+
+            if (!$db->tableExists('orders')) {
+                return;
+            }
+
+            if (!$db->fieldExists('secure_token', 'orders')) {
+                $forge->addColumn('orders', [
+                    'secure_token' => [
+                        'type'       => 'VARCHAR',
+                        'constraint' => 128,
+                        'null'       => true,
+                    ],
+                ]);
+            }
+
+            $this->ordersTableColumns = null;
+
+            try {
+                $forge->addKey('secure_token', false, true);
+                $forge->processIndexes('orders');
+            } catch (\Throwable $e) {
+                // index may already exist
+            }
+
+            log_message('notice', 'Auto-repaired missing secure_token column on orders table from callback flow');
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed auto-repair for secure_token schema in callback: {message}', ['message' => $e->getMessage()]);
+        }
+    }
+
+    private function ordersColumnExists(string $column): bool
+    {
+        if ($this->ordersTableColumns === null) {
+            $this->ordersTableColumns = \Config\Database::connect()->getFieldNames('orders');
+        }
+
+        return in_array($column, $this->ordersTableColumns, true);
+    }
+
+    private function ensureOrderHasSecureToken(OrderModel $orderModel, int $orderId): ?array
+    {
+        if (!$this->ordersColumnExists('secure_token')) {
+            log_message('warning', 'secure_token column does not exist for order id {id}', ['id' => $orderId]);
+            return $orderModel->find($orderId);
+        }
+
+        $latest = $orderModel->find($orderId);
+        if (!$latest) {
+            return null;
+        }
+
+        if (!empty($latest['secure_token'])) {
+            return $latest;
+        }
+
+        $newToken = bin2hex(random_bytes(32));
+        log_message('debug', 'Generating secure_token for order id {id}', ['id' => $orderId]);
+        $updated = $orderModel->update($orderId, ['secure_token' => $newToken]);
+        log_message('debug', 'secure_token update result for order id {id}: {result}', ['id' => $orderId, 'result' => $updated ? 'updated' : 'not_updated']);
+        $latest = $orderModel->find($orderId);
+
+        if (!empty($latest['secure_token'])) {
+            return $latest;
+        }
+
+        log_message('error', 'Failed to persist secure_token for successful order id {id}', ['id' => $orderId]);
+
+        return $latest;
     }
 }
