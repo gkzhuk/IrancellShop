@@ -16,8 +16,10 @@
             return;
         }
 
-        var offerKey = timerElement.getAttribute('data-offer-key') || window.location.pathname;
-        var offerStorageKey = 'irancell_discount_offer_expire_at_' + offerKey;
+        var simcardIdElement = document.querySelector('[data-simcard-id], input[name="simcard_id"]');
+        var simcardId = simcardIdElement ? (simcardIdElement.getAttribute('data-simcard-id') || simcardIdElement.value) : '';
+        var pageKey = simcardId || window.location.pathname;
+        var offerStorageKey = 'irancell_discount_offer_expire_at_' + pageKey;
         var offerDurationMs = 24 * 60 * 60 * 1000;
 
         function toPersianNumber(value) {
