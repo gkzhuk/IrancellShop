@@ -436,3 +436,88 @@
 </style>
 
 <?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var timerElement = document.querySelector('[data-fake-countdown], [data-countdown], #fakeCountdown, #fakeCountdownTimer, #countdownTimer, .fake-countdown, .countdown-timer');
+    if (!timerElement) {
+        return;
+    }
+
+    var storageKey = 'irancell_sim_order_countdown_expire_at_<?= (int) ($simcard['id'] ?? 0) ?>';
+
+    function parseCurrentDuration(text) {
+        var normalized = (text || '').replace(/[۰-۹٠-٩]/g, function (digit) {
+            return '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩'.indexOf(digit) % 10;
+        });
+        var parts = normalized.match(/\d+/g);
+        if (!parts || !parts.length) {
+            return null;
+        }
+        parts = parts.map(function (part) { return parseInt(part, 10); });
+        if (parts.length >= 3) {
+            return ((parts[0] * 60 * 60) + (parts[1] * 60) + parts[2]) * 1000;
+        }
+        if (parts.length === 2) {
+            return ((parts[0] * 60) + parts[1]) * 1000;
+        }
+        return parts[0] * 1000;
+    }
+
+    function generateDuration() {
+        if (typeof window.generateFakeCountdownDuration === 'function') {
+            return window.generateFakeCountdownDuration();
+        }
+
+        var existingDuration = parseCurrentDuration(timerElement.textContent);
+        if (existingDuration && existingDuration > 0) {
+            return existingDuration;
+        }
+
+        var minDuration = parseInt(timerElement.getAttribute('data-min-duration') || '300000', 10);
+        var maxDuration = parseInt(timerElement.getAttribute('data-max-duration') || '900000', 10);
+        return Math.floor(Math.random() * (maxDuration - minDuration + 1)) + minDuration;
+    }
+
+    function getExpireAt() {
+        var storedExpireAt = parseInt(localStorage.getItem(storageKey) || '0', 10);
+        if (storedExpireAt && storedExpireAt > Date.now()) {
+            return storedExpireAt;
+        }
+
+        localStorage.removeItem(storageKey);
+        var expireAt = Date.now() + generateDuration();
+        localStorage.setItem(storageKey, String(expireAt));
+        return expireAt;
+    }
+
+    function toPersianNumber(value) {
+        return String(value).replace(/\d/g, function (digit) {
+            return '۰۱۲۳۴۵۶۷۸۹'[digit];
+        });
+    }
+
+    function render(remainingMs) {
+        var totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+        var minutes = Math.floor(totalSeconds / 60);
+        var seconds = totalSeconds % 60;
+        timerElement.textContent = toPersianNumber(minutes) + ':' + toPersianNumber(String(seconds).padStart(2, '0'));
+    }
+
+    var expireAt = getExpireAt();
+    window.setInterval(function () {
+        var remainingMs = expireAt - Date.now();
+        if (remainingMs <= 0) {
+            localStorage.removeItem(storageKey);
+            expireAt = Date.now() + generateDuration();
+            localStorage.setItem(storageKey, String(expireAt));
+            remainingMs = expireAt - Date.now();
+        }
+        render(remainingMs);
+    }, 1000);
+
+    render(expireAt - Date.now());
+});
+</script>
+<?= $this->endSection() ?>
